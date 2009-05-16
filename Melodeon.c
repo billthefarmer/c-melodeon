@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  Melodeon - A simple Melodeon player written in C.
+//  Melodeon - A simple Melodeon emulator written in C.
 //
 //  Copyright (C) 2009  Bill Farmer
 //
@@ -99,10 +99,10 @@ char *instruments[] =
 // List of keys and offset values
 
 char *keys[] =
-  {"C", "G", "D", "A"};
+    {"Eb", "Bb", "F", "C", "G", "D", "A"};
 
 int keyvals[] =
-  {0, -5, 2, -3};
+    {3, -2, 5, 0, -5, 2, -3};
 
 UINT key;
 
@@ -330,6 +330,22 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 hinst,       // handle to application instance
 			 NULL);       // Pointer not needed.
 
+	// Create text
+
+	text = 
+	    CreateWindow(WC_STATIC,   // Predefined class.
+			 "Instrument:",// Text.
+			 WS_VISIBLE | WS_CHILD |
+			 SS_LEFT,     // Styles.
+			 20,          // x position.
+			 24,          // y position.
+			 76,          // width.
+			 20,          // height.
+			 hWnd,        // Parent window.
+			 (HMENU)TXTS, // Id.
+			 hinst,       // handle to application instance
+			 NULL);       // Pointer not needed.
+
 	// Create instruments pulldown
 
 	inst =
@@ -337,9 +353,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL,        // No text. 
 			 WS_VISIBLE | WS_CHILD |
 			 CBS_DROPDOWNLIST, // Styles. 
-			 20,          // x position. 
+			 102,         // x position. 
 			 20,          // y position. 
-			 250,         // width.
+			 168,         // width.
 			 24,          // height.
 			 hWnd,        // Parent window.
 			 (HMENU)INST, // Id.
@@ -361,15 +377,31 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	hrev =
 	    CreateWindow(WC_BUTTON,  // Predefined class. 
-			 "Reverse",  // Text. 
-			 WS_VISIBLE | WS_CHILD | BS_PUSHLIKE |
+			 "Reverse buttons:", // Text. 
+			 WS_VISIBLE | WS_CHILD | BS_LEFTTEXT |
 			 BS_CHECKBOX, // Styles. 
 			 280,         // x position. 
 			 20,          // y position. 
-			 120,         // width.
+			 130,         // width.
 			 24,          // height.
 			 hWnd,        // Parent window.
 			 (HMENU)REVS, // Id.
+			 hinst,       // handle to application instance
+			 NULL);       // Pointer not needed.
+
+	// Create text
+
+	text = 
+	    CreateWindow(WC_STATIC,   // Predefined class.
+			 "Key:",      // Text.
+			 WS_VISIBLE | WS_CHILD |
+			 SS_LEFT,     // Styles.
+			 420,         // x position.
+			 24,          // y position.
+			 76,          // width.
+			 20,          // height.
+			 hWnd,        // Parent window.
+			 (HMENU)TXTS, // Id.
 			 hinst,       // handle to application instance
 			 NULL);       // Pointer not needed.
 
@@ -380,9 +412,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL,        // No text. 
 			 WS_VISIBLE | WS_CHILD |
 			 CBS_DROPDOWNLIST, // Styles. 
-			 410,         // x position. 
+			 458,         // x position. 
 			 20,          // y position. 
-			 120,         // width.
+			 72,          // width.
 			 24,          // height.
 			 hWnd,        // Parent window.
 			 (HMENU)KEYS, // Id.
@@ -398,6 +430,22 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	SendMessage(hkey, CB_SELECTSTRING, -1, (LPARAM)"C");
 
+	// Create text
+
+	text = 
+	    CreateWindow(WC_STATIC,   // Predefined class.
+			 "Volume:",   // Text.
+			 WS_VISIBLE | WS_CHILD |
+			 SS_LEFT,     // Styles.
+			 20,          // x position.
+			 58,          // y position.
+			 54,          // width.
+			 20,          // height.
+			 hWnd,        // Parent window.
+			 (HMENU)TXTS, // Id.
+			 hinst,       // handle to application instance
+			 NULL);       // Pointer not needed.
+
 	// Create volume control
 
 	hvol =
@@ -405,9 +453,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL,         // no text
 			 WS_VISIBLE | WS_CHILD |
 			 SBS_HORZ,     // scroll bar styles
-			 20,           // horizontal position
+			 102,           // horizontal position
 			 54,           // vertical position
-			 250,          // width of the scroll bar
+			 168,          // width of the scroll bar
 			 24,           // height of the scroll bar
 			 hWnd,         // handle to main window
 			 (HMENU)VOLM,  // id
@@ -432,9 +480,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 "Quit",     // Text.
 			 WS_VISIBLE | WS_CHILD |
 			 BS_PUSHBUTTON, // Styles.
-			 409,         // x position.
+			 457,         // x position.
 			 53,          // y position.
-			 122,         // width.
+			 74,          // width.
 			 26,          // height.
 			 hWnd,        // Parent window.
 			 (HMENU)QUIT, // Id.
