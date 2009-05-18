@@ -22,7 +22,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <windows.h> 
+#include <windows.h>
 #include "commctrl.h"
 
 // Macros
@@ -35,10 +35,11 @@
 #define REVS 102
 #define KEYS 103
 #define VOLM 104
-#define QUIT 105
-#define TXTS 106
-#define BTNS 107
-#define STAT 108
+#define LAYT 105
+#define QUIT 106
+#define TXTS 107
+#define BTNS 108
+#define STAT 109
 
 // Midi codes
 
@@ -106,26 +107,57 @@ int keyvals[] =
 
 UINT key;
 
+// Layouts
+
+char *layouts[] =
+    {"Extended", "Hohner"};
+
+UINT layout;
+
 // Midi notes for 'C'
 
-BYTE notes[12][2] =
-    {{48, 53},
-     {52, 57},
-     {55, 59},
-     {60, 62},
-     {64, 65},
-     {67, 69},
-     {72, 71},
-     {76, 74},
-     {79, 77},
-     {84, 81},
-     {88, 83},
-     {91, 86}};
+BYTE notes[2][12][2] =
+    {{{48, 53},
+      {52, 57},
+      {55, 59},
+      {60, 62},
+      {64, 65},
+      {67, 69},
+      {72, 71},
+      {76, 74},
+      {79, 77},
+      {84, 81},
+      {88, 83},
+      {91, 86}},
+     {{48, 53},
+      {52, 55},
+      {55, 59},
+      {60, 62},
+      {64, 65},
+      {67, 69},
+      {72, 71},
+      {76, 74},
+      {79, 77},
+      {84, 81},
+      {88, 83},
+      {91, 86}}};
 
+// Midi notes for bass
+#ifdef BASS
+BYTE bass[] =
+    {36, 43};
+
+byte chord[2][2] =
+    {{60, 67},
+     {67, 74}};
+#endif
 // Buttons
 
 BOOL buttons[12];
-
+#ifdef BASS
+BOOL control;
+BOOL alt;
+#endif
 // Bellows handle
 
 BOOL bellows;
@@ -143,6 +175,9 @@ UINT volume = 127;
 // Display handles
 
 HWND display[12];
+#ifdef BASS
+HWND bassdisp[4];
+#endif
 HWND spacebar;
 
 // Status bar handle
@@ -154,6 +189,8 @@ HWND status;
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int);
 LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 UINT ChangeInstrument(HWND);
+UINT ReverseButtons(HWND);
+UINT ChangeLayout(HWND);
 UINT ChangeKey(HWND);
 UINT NoteOn(WPARAM, LPARAM);
 UINT NoteOff(WPARAM, LPARAM);
@@ -263,14 +300,18 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
     static HWND hgrp;
     static HWND inst;
     static HWND hkey;
+    static HWND hlay;
     static HWND quit;
     static HWND text;
 
     static int ival;
     static int kval;
+    static int lval;
 
     RECT rwnd;
     RECT rclt;
+
+    char *s;
 
     switch (uMsg)
     {
@@ -285,8 +326,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	int border = (rwnd.right - rwnd.left) - rclt.right;
 	int width = 550 + border;
-	int height = width * (rwnd.bottom - rwnd.top) /
-	    (rwnd.right - rwnd.left);
+	int height = width * 3 / 4;
 
 	// Set new dimensions
 
@@ -301,14 +341,14 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create status bar
 
-	status = 
-	    CreateWindow(STATUSCLASSNAME, // Predefined class. 
+	status =
+	    CreateWindow(STATUSCLASSNAME, // Predefined class.
 			 " Press the function keys F1 - F12"
 			 " as melodeon buttons and the space"
 			 " bar as the bellows. Fourth button"
-			 " start.",   // Text. 
-			 WS_VISIBLE | WS_CHILD, // Styles. 
-			 0, 0, 0, 0,  // no size or position. 
+			 " start.",   // Text.
+			 WS_VISIBLE | WS_CHILD, // Styles.
+			 0, 0, 0, 0,  // no size or position.
 			 hWnd,        // Parent window.
 			 (HMENU)STAT, // Id.
 			 hinst,       // handle to application instance
@@ -316,13 +356,13 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create group box
 
-	hgrp = 
+	hgrp =
 	    CreateWindow(WC_BUTTON,   // Predefined class.
-			 NULL,        // No text. 
+			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
-			 BS_GROUPBOX, // Styles. 
-			 10,          // x position. 
-			 2,           // y position. 
+			 BS_GROUPBOX, // Styles.
+			 10,          // x position.
+			 2,           // y position.
 			 530,         // width.
 			 86,          // height.
 			 hWnd,        // Parent window.
@@ -332,7 +372,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create text
 
-	text = 
+	text =
 	    CreateWindow(WC_STATIC,   // Predefined class.
 			 "Instrument:",// Text.
 			 WS_VISIBLE | WS_CHILD |
@@ -349,12 +389,12 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Create instruments pulldown
 
 	inst =
-	    CreateWindow(WC_COMBOBOX, // Predefined class. 
-			 NULL,        // No text. 
+	    CreateWindow(WC_COMBOBOX, // Predefined class.
+			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
-			 CBS_DROPDOWNLIST, // Styles. 
-			 102,         // x position. 
-			 20,          // y position. 
+			 CBS_DROPDOWNLIST, // Styles.
+			 102,         // x position.
+			 20,          // y position.
 			 168,         // width.
 			 24,          // height.
 			 hWnd,        // Parent window.
@@ -376,12 +416,12 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Create reverse tickbox
 
 	hrev =
-	    CreateWindow(WC_BUTTON,  // Predefined class. 
-			 "Reverse buttons:", // Text. 
+	    CreateWindow(WC_BUTTON,  // Predefined class.
+			 "Reverse buttons:", // Text.
 			 WS_VISIBLE | WS_CHILD | BS_LEFTTEXT |
-			 BS_CHECKBOX, // Styles. 
-			 280,         // x position. 
-			 20,          // y position. 
+			 BS_CHECKBOX, // Styles.
+			 280,         // x position.
+			 20,          // y position.
 			 130,         // width.
 			 24,          // height.
 			 hWnd,        // Parent window.
@@ -391,7 +431,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create text
 
-	text = 
+	text =
 	    CreateWindow(WC_STATIC,   // Predefined class.
 			 "Key:",      // Text.
 			 WS_VISIBLE | WS_CHILD |
@@ -408,12 +448,12 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Create keys pulldown
 
 	hkey =
-	    CreateWindow(WC_COMBOBOX, // Predefined class. 
-			 NULL,        // No text. 
+	    CreateWindow(WC_COMBOBOX, // Predefined class.
+			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
-			 CBS_DROPDOWNLIST, // Styles. 
-			 458,         // x position. 
-			 20,          // y position. 
+			 CBS_DROPDOWNLIST, // Styles.
+			 458,         // x position.
+			 20,          // y position.
 			 72,          // width.
 			 24,          // height.
 			 hWnd,        // Parent window.
@@ -432,7 +472,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create text
 
-	text = 
+	text =
 	    CreateWindow(WC_STATIC,   // Predefined class.
 			 "Volume:",   // Text.
 			 WS_VISIBLE | WS_CHILD |
@@ -454,9 +494,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 WS_VISIBLE | WS_CHILD |
 			 SBS_HORZ,     // scroll bar styles
 			 102,           // horizontal position
-			 54,           // vertical position
+			 59,           // vertical position
 			 168,          // width of the scroll bar
-			 24,           // height of the scroll bar
+			 16,           // height of the scroll bar
 			 hWnd,         // handle to main window
 			 (HMENU)VOLM,  // id
 			 hinst,        // instance owning this window
@@ -472,6 +512,47 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 		     SB_CTL,
 		     volume,
 		     FALSE);
+
+	// Create text
+
+	text =
+	    CreateWindow(WC_STATIC,   // Predefined class.
+			 "Layout:",   // Text.
+			 WS_VISIBLE | WS_CHILD |
+			 SS_LEFT,     // Styles.
+			 280,         // x position.
+			 58,          // y position.
+			 54,          // width.
+			 20,          // height.
+			 hWnd,        // Parent window.
+			 (HMENU)TXTS, // Id.
+			 hinst,       // handle to application instance
+			 NULL);       // Pointer not needed.
+
+	// Create layout pulldown
+
+	hlay =
+	    CreateWindow(WC_COMBOBOX, // Predefined class.
+			 NULL,        // No text.
+			 WS_VISIBLE | WS_CHILD |
+			 CBS_DROPDOWNLIST, // Styles.
+			 337,         // x position.
+			 54,          // y position.
+			 110,         // width.
+			 24,          // height.
+			 hWnd,        // Parent window.
+			 (HMENU)LAYT, // Id.
+			 hinst,       // handle to application instance
+			 NULL);       // Pointer not needed.
+
+	// Add the layouts
+
+	for (i = 0; i != LENGTH(layouts); i++)
+	    SendMessage(hlay, CB_ADDSTRING, 0, (LPARAM)layouts[i]);
+
+	// Select C
+
+	SendMessage(hlay, CB_SELECTSTRING, -1, (LPARAM)"Hohner");
 
 	// Create quit button
 
@@ -491,15 +572,19 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create group box
 
-	hgrp = 
+	hgrp =
 	    CreateWindow(WC_BUTTON,   // Predefined class.
-			 NULL,        // No text. 
+			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
-			 BS_GROUPBOX, // Styles. 
-			 10,          // x position. 
-			 90,          // y position. 
+			 BS_GROUPBOX, // Styles.
+			 10,          // x position.
+			 90,          // y position.
 			 530,         // width.
-			 118,         // height.
+#ifdef BASS
+			 108,         // height.
+#else
+			 152,         // height.
+#endif
 			 hWnd,        // Parent window.
 			 (HMENU)INST, // Id.
 			 hinst,       // handle to application instance
@@ -507,14 +592,18 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create text
 
-	text = 
+	text =
 	    CreateWindow(WC_STATIC,   // Predefined class.
 			 "Melodeon\n\n" // Text.
 			 "Play melodeon on your keyboard",
 			 WS_VISIBLE | WS_CHILD |
 			 SS_CENTER,   // Styles.
 			 20,          // x position.
-			 128,         // y position.
+#ifdef BASS
+			 124,         // y position.
+#else
+			 144,         // y position.
+#endif
 			 510,         // width.
 			 52,          // height.
 			 hWnd,        // Parent window.
@@ -536,15 +625,21 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create group box
 
-	hgrp = 
+	hgrp =
 	    CreateWindow(WC_BUTTON,   // Predefined class.
-			 NULL,        // No text. 
+			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
-			 BS_GROUPBOX, // Styles. 
-			 10,          // x position. 
-			 bottom - 116,// y position. 
+			 BS_GROUPBOX, // Styles.
+			 10,          // x position.
+#ifdef BASS
+			 bottom - 162, // y position.
 			 530,         // width.
-			 106,         // height.
+			 152,         // height.
+#else
+			 bottom - 118, // y position.
+			 530,         // width.
+			 108,         // height.
+#endif
 			 hWnd,        // Parent window.
 			 (HMENU)INST, // Id.
 			 hinst,       // handle to application instance
@@ -553,30 +648,53 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Create spacebar
 
 	spacebar =
-	    CreateWindow(WC_BUTTON,   // Predefined class. 
-			 NULL,        // No text. 
+	    CreateWindow(WC_BUTTON,   // Predefined class.
+			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
-			 BS_PUSHBUTTON, // Styles. 
-			 145,         // x position. 
-			 bottom - 98, // y position. 
-			 260,         // width.
+			 BS_PUSHBUTTON, // Styles.
+			 150,         // x position.
+#ifdef BASS
+			 bottom - 142, // y position.
+#else
+			 bottom - 98,  // y position.
+#endif
+			 250,         // width.
 			 34,          // height.
 			 hWnd,        // Parent window.
 			 (HMENU)BTNS, // Id.
 			 hinst,       // handle to application instance
 			 NULL);       // Pointer not needed.
 
+	// Create bass buttons
+#ifdef BASS
+	for (i = 0; i != LENGTH(bassdisp); i++)
+	{
+	    bassdisp[i] =
+		CreateWindow(WC_BUTTON,  // Predefined class.
+			     NULL,       // No text.
+			     WS_VISIBLE | WS_CHILD |
+			     BS_PUSHBUTTON, // Styles.
+			     172 + 43 * i, // x position.
+			     bottom - 98, // y position.
+			     34,          // width.
+			     34,          // height.
+			     hWnd,        // Parent window.
+			     (HMENU)BTNS, // Id.
+			     hinst,       // handle to application instance
+			     NULL);       // Pointer not needed.
+	}
+#endif
 	// Create row of display buttons
 
 	for (i = 0; i != LENGTH(display); i++)
 	{
-	    display[i] = 
-		CreateWindow(WC_BUTTON,  // Predefined class. 
-			     NULL,       // No text. 
+	    display[i] =
+		CreateWindow(WC_BUTTON,  // Predefined class.
+			     NULL,       // No text.
 			     WS_VISIBLE | WS_CHILD |
-			     BS_PUSHBUTTON, // Styles. 
-			     21 + 43 * i, // x position. 
-			     bottom - 54, // y position. 
+			     BS_PUSHBUTTON, // Styles.
+			     21 + 43 * i, // x position.
+			     bottom - 54, // y position.
 			     34,          // width.
 			     34,          // height.
 			     hWnd,        // Parent window.
@@ -596,11 +714,69 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Change the key
 
 	ChangeKey(hkey);
+
+	// Change layout
+
+	ChangeLayout(hlay);
 	break;
 
-	// Colour text
+	// Colour static text, defeat DefWindowProc() by capturing
+	// this message
 
     case WM_CTLCOLORSTATIC:
+	break;
+
+	// Character key pressed
+
+    case WM_CHAR:
+	switch (wParam)
+	{
+	case 'E':
+	case 'e':
+	    s = "Eb";
+	    break;
+
+	case 'B':
+	case 'b':
+	    s = "Bb";
+	    break;
+
+	case 'F':
+	case 'f':
+	    s = "F";
+	    break;
+
+	case 'C':
+	case 'c':
+	    s = "C";
+	    break;
+
+	case 'G':
+	case 'g':
+	    s = "G";
+	    break;
+
+	case 'D':
+	case 'd':
+	    s = "D";
+	    break;
+
+	case 'A':
+	case 'a':
+	    s = "A";
+	    break;
+
+	case 'R':
+	case 'r':
+	    ReverseButtons(hrev);
+	    return 0;
+
+	default:
+	    return 0;
+	}
+
+	SendMessage(hkey, CB_SELECTSTRING, -1, (LPARAM)s);
+	ChangeKey(hkey);
 	break;
 
 	// F10 key generates a WM_SYSKEYDOWN message
@@ -719,11 +895,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	case REVS:
 	    if (HIWORD(wParam) == BN_CLICKED)
-	    {
-		reverse = !reverse;
-		SendMessage(hrev, BM_SETCHECK,
-			    reverse? BST_CHECKED: BST_UNCHECKED, 0);
-	    }
+		ReverseButtons((HWND)lParam);
 
 	    // Set the focus back to the window
 
@@ -751,6 +923,25 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	    }
 	    break;
 
+	case LAYT:
+	    switch (HIWORD(wParam))
+	    {
+	    case CBN_DROPDOWN:
+		lval = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
+		break;
+
+	    case CBN_SELENDOK:
+		ChangeLayout((HWND)lParam);
+		SetFocus(hWnd);
+		break;
+
+	    case CBN_SELENDCANCEL:
+		SendMessage((HWND)lParam, CB_SETCURSEL, lval, 0);
+		SetFocus(hWnd);
+		break;
+	    }
+	    break;
+
 	    // Keyboard buttons, set the focus back to the window
 
 	case BTNS:
@@ -773,7 +964,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	break;
 
         // Process other messages.
-       
+
     case WM_DESTROY:
 	PostQuitMessage(0);
 	break;
@@ -795,11 +986,27 @@ UINT ChangeInstrument(HWND hinst)
     return ShortMessage(CHANGE, inst, 0);
 }
 
+// Reverse buttons
+
+UINT ReverseButtons(HWND hrev)
+{
+    midiOutReset(hmdo);
+
+    reverse = !reverse;
+    SendMessage(hrev, BM_SETCHECK,
+		reverse? BST_CHECKED: BST_UNCHECKED, 0);
+}
+
 // Change key
 
 UINT ChangeKey(HWND hkey)
 {
     key = SendMessage(hkey, CB_GETCURSEL, 0, 0);
+}
+
+UINT ChangeLayout(HWND hlay)
+{
+    layout = SendMessage(hlay, CB_GETCURSEL, 0, 0);
 }
 
 // Send a short midi message
@@ -839,13 +1046,41 @@ UINT NoteOn(WPARAM w, LPARAM l)
 	{
 	    // Look up the note and play it
 
-	    int note = notes[n][bellows] + keyvals[key];
 	    buttons[n] = TRUE;
+	    int note = notes[layout][n][bellows] + keyvals[key];
 	    SendMessage(display[m], BM_SETSTATE, TRUE, 0);
 	    return ShortMessage(NOTEON, note, volume);
 	}
     }
 
+    // Check for the control key
+#ifdef BASS
+    else if (w == VK_CONTROL)
+    {
+	if (!control)
+	{
+	    control = TRUE;
+	    SendMessage(bassend[0], BM_SETSTATE, TRUE, 0);
+	    int note = bass[bellows] + keyvals[key];
+	    return ShortMessage(NOTEON, note, volume);
+	}
+    }
+
+    // Check for the alt key
+
+    else if (w == VK_MENU)
+    {
+	if (!alt)
+	{
+	    alt = TRUE;
+	    SendMessage(bassend[1], BM_SETSTATE, TRUE, 0);
+	    int note = chord[0][bellows] + keyvals[key];
+	    ShortMessage(NOTEON, note, volume);
+	    note = chord[1][bellows] + keyvals[key];
+	    return ShortMessage(NOTEON + 1, note, volume);
+	}
+    }
+#endif
     // Check for the space bar
 
     else if (w == VK_SPACE)
@@ -860,12 +1095,26 @@ UINT NoteOn(WPARAM w, LPARAM l)
 	    bellows = TRUE;
 	    SendMessage(spacebar, BM_SETSTATE, TRUE, 0);
 	    midiOutReset(hmdo);
+#ifdef BASS
+	    if (control)
+	    {
+		int note = bass[bellows] + keyvals[key];
+		ShortMessage(NOTEON, note, volume);
+	    }
 
+	    if (alt)
+	    {
+		int note = chord[0][bellows] + keyvals[key];
+		ShortMessage(NOTEON, note, volume);
+		note = chord[1][bellows] + keyvals[key];
+		ShortMessage(NOTEON + 1, note, volume);
+	    }
+#endif
 	    for (i = 0; i != LENGTH(buttons); i++)
 	    {
 		if (buttons[i])
 		{
-		    int note = notes[i][bellows] + keyvals[key];
+		    int note = notes[layout][i][bellows] + keyvals[key];
 		    ShortMessage(NOTEON, note, volume);
 		}
 	    }
@@ -894,13 +1143,41 @@ UINT NoteOff(WPARAM w, LPARAM l)
 	{
 	    // Look up the note and stop it
 
-	    int note = notes[n][bellows] + keyvals[key];
+	    int note = notes[layout][n][bellows] + keyvals[key];
 	    buttons[n] = FALSE;
 	    SendMessage(display[m], BM_SETSTATE, FALSE, 0);
 	    return ShortMessage(NOTEOFF, note, volume);
 	}
     }
 
+    // Check for the control key
+#ifdef BASS
+    else if (w == VK_CONTROL)
+    {
+	if (control)
+	{
+	    control = FALSE;
+	    SendMessage(bassend[0], BM_SETSTATE, FALSE, 0);
+	    int note = bass[bellows] + keyvals[key];
+	    return ShortMessage(NOTEOFF, note, volume);
+	}
+    }
+
+    // Check for the alt key
+
+    else if (w == VK_MENU)
+    {
+	if (alt)
+	{
+	    alt = FALSE;
+	    SendMessage(bassend[1], BM_SETSTATE, FALSE, 0);
+	    int note = chord[0][bellows] + keyvals[key];
+	    ShortMessage(NOTEOFF, note, volume);
+	    note = chord[1][bellows] + keyvals[key];
+	    return ShortMessage(NOTEOFF + 1, note, volume);
+	}
+    }
+#endif
     // Check for the space bar
 
     else if (w == VK_SPACE)
@@ -915,12 +1192,26 @@ UINT NoteOff(WPARAM w, LPARAM l)
 	    bellows = FALSE;
 	    SendMessage(spacebar, BM_SETSTATE, FALSE, 0);
 	    midiOutReset(hmdo);
+#ifdef BASS
+	    if (control)
+	    {
+		int note = bass[bellows] + keyvals[key];
+		ShortMessage(NOTEON, note, volume);
+	    }
 
+	    if (alt)
+	    {
+		int note = chord[0][bellows] + keyvals[key];
+		ShortMessage(NOTEON, note, volume);
+		note = chord[1][bellows] + keyvals[key];
+		ShortMessage(NOTEON + 1, note, volume);
+	    }
+#endif
 	    for (i = 0; i != LENGTH(buttons); i++)
 	    {
 		if (buttons[i])
 		{
-		    int note = notes[i][bellows] + keyvals[key];
+		    int note = notes[layout][i][bellows] + keyvals[key];
 		    ShortMessage(NOTEON, note, volume);
 		}
 	    }

@@ -36,6 +36,7 @@ var ICONS_GROUP
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Melodeon.exe"
+!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\Readme"
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
