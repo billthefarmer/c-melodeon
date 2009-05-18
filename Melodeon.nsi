@@ -36,7 +36,7 @@ var ICONS_GROUP
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Melodeon.exe"
-!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\Readme"
+!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\Readme.txt"
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
@@ -59,6 +59,8 @@ Section "MainSection" SEC01
   SetOverwrite ifnewer
   File "Melodeon.exe"
   File "Melodeon.exe.manifest"
+  File "Readme.txt"
+  File "Changes"
   File "COPYING"
 
 ; Shortcuts
@@ -102,6 +104,8 @@ Section Uninstall
   !insertmacro MUI_STARTMENU_GETFOLDER "Application" $ICONS_GROUP
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
+  Delete "$INSTDIR\Readme.txt"
+  Delete "$INSTDIR\Changes"
   Delete "$INSTDIR\COPYING"
   Delete "$INSTDIR\Melodeon.exe.manifest"
   Delete "$INSTDIR\Melodeon.exe"

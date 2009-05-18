@@ -42,8 +42,9 @@ Changes			- Change log
 Melodeon.c		- Source file
 Melodeon.exe		- Application
 Melodeon.exe.manifest	- Manifest file
+Melodeon.nsi		- NSIS installer script
 Makefile		- Build file
-Readme			- This file
+Readme.txt		- This file
 
 Building
 ========
