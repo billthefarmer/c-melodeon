@@ -1,4 +1,5 @@
-Enable bass buttons and add code to disable pop up menus. 20-May-09
+Enable bass buttons and add code to disable pop up menus. Add Sruti
+box, change Makefile. 20-May-09
 
 Add layout choice and keyboard selectors for keys and reversal. Add
 code for bass buttons, currently disabled. 18-May-09

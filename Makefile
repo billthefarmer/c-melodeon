@@ -1,12 +1,12 @@
 ################################################################################
 #
-#  Makefile for Melodeon
+#  Makefile for Melodeon and Sruti box
 #
 ################################################################################
 
 GCC	= gcc
 
-all:	Melodeon.exe
+all:	Melodeon.exe Srutibox.exe
 
 clean:
 	rm *.exe
