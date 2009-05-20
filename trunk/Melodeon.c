@@ -23,7 +23,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <windows.h>
-#include "commctrl.h"
+#include <commctrl.h>
 
 // Macros
 
@@ -44,8 +44,23 @@
 // Midi codes
 
 #define NOTEOFF 0x80
+#define BASSOFF 0x81
+#define CHRDOFF 0x82
 #define NOTEON  0x90
+#define BASSON  0x91
+#define CHRDON  0x92
 #define CHANGE  0xc0
+
+// Offsets
+
+#define BASS  0
+#define CHORD 1
+#define LEFT  0
+#define RIGHT 1
+
+// Bass buttons
+
+#define BASSBUTTONS
 
 // Global handles
 
@@ -143,18 +158,29 @@ BYTE notes[2][12][2] =
       {91, 86}}};
 
 // Midi notes for bass
-#ifdef BASS
-BYTE bass[] =
-    {36, 43};
+#ifdef BASSBUTTONS
+BYTE bass[LENGTH(keys)][2] =
+    {{39, 46},
+     {46, 41},
+     {41, 36},
+     {36, 43},
+     {43, 38},
+     {38, 45},
+     {45, 40}};
 
-byte chord[2][2] =
-    {{60, 67},
-     {67, 74}};
+byte chord[LENGTH(keys)][2][2] =
+    {{{63, 70}, {70, 65}},
+     {{70, 65}, {65, 60}},
+     {{65, 60}, {60, 67}},
+     {{60, 67}, {67, 62}},
+     {{67, 62}, {62, 69}},
+     {{62, 69}, {69, 64}},
+     {{69, 64}, {64, 71}}};
 #endif
 // Buttons
 
 BOOL buttons[12];
-#ifdef BASS
+#ifdef BASSBUTTONS
 BOOL control;
 BOOL alt;
 #endif
@@ -175,8 +201,8 @@ UINT volume = 127;
 // Display handles
 
 HWND display[12];
-#ifdef BASS
-HWND bassdisp[4];
+#ifdef BASSBUTTONS
+HWND bassdisp[2][2];
 #endif
 HWND spacebar;
 
@@ -192,8 +218,8 @@ UINT ChangeInstrument(HWND);
 UINT ReverseButtons(HWND);
 UINT ChangeLayout(HWND);
 UINT ChangeKey(HWND);
-UINT NoteOn(WPARAM, LPARAM);
-UINT NoteOff(WPARAM, LPARAM);
+UINT KeyDown(WPARAM, LPARAM);
+UINT KeyUp(WPARAM, LPARAM);
 UINT ShortMessage(BYTE, BYTE, BYTE);
 
 // Application entry point.
@@ -580,11 +606,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 10,          // x position.
 			 90,          // y position.
 			 530,         // width.
-#ifdef BASS
-			 108,         // height.
-#else
 			 152,         // height.
-#endif
 			 hWnd,        // Parent window.
 			 (HMENU)INST, // Id.
 			 hinst,       // handle to application instance
@@ -599,11 +621,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 WS_VISIBLE | WS_CHILD |
 			 SS_CENTER,   // Styles.
 			 20,          // x position.
-#ifdef BASS
-			 124,         // y position.
-#else
 			 144,         // y position.
-#endif
 			 510,         // width.
 			 52,          // height.
 			 hWnd,        // Parent window.
@@ -631,15 +649,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 WS_VISIBLE | WS_CHILD |
 			 BS_GROUPBOX, // Styles.
 			 10,          // x position.
-#ifdef BASS
-			 bottom - 162, // y position.
-			 530,         // width.
-			 152,         // height.
-#else
 			 bottom - 118, // y position.
 			 530,         // width.
 			 108,         // height.
-#endif
 			 hWnd,        // Parent window.
 			 (HMENU)INST, // Id.
 			 hinst,       // handle to application instance
@@ -653,11 +665,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 WS_VISIBLE | WS_CHILD |
 			 BS_PUSHBUTTON, // Styles.
 			 150,         // x position.
-#ifdef BASS
-			 bottom - 142, // y position.
-#else
 			 bottom - 98,  // y position.
-#endif
 			 250,         // width.
 			 34,          // height.
 			 hWnd,        // Parent window.
@@ -666,15 +674,29 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL);       // Pointer not needed.
 
 	// Create bass buttons
-#ifdef BASS
+#ifdef BASSBUTTONS
 	for (i = 0; i != LENGTH(bassdisp); i++)
 	{
-	    bassdisp[i] =
+	    bassdisp[LEFT][i] =
 		CreateWindow(WC_BUTTON,  // Predefined class.
 			     NULL,       // No text.
 			     WS_VISIBLE | WS_CHILD |
 			     BS_PUSHBUTTON, // Styles.
-			     172 + 43 * i, // x position.
+			     21 + 86 * i, // x position.
+			     bottom - 98, // y position.
+			     34,          // width.
+			     34,          // height.
+			     hWnd,        // Parent window.
+			     (HMENU)BTNS, // Id.
+			     hinst,       // handle to application instance
+			     NULL);       // Pointer not needed.
+
+	    bassdisp[RIGHT][i] =
+		CreateWindow(WC_BUTTON,  // Predefined class.
+			     NULL,       // No text.
+			     WS_VISIBLE | WS_CHILD |
+			     BS_PUSHBUTTON, // Styles.
+			     494 - 86 * i, // x position.
 			     bottom - 98, // y position.
 			     34,          // width.
 			     34,          // height.
@@ -724,6 +746,16 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// this message
 
     case WM_CTLCOLORSTATIC:
+	break;
+
+	// Disable menus
+
+    case WM_INITMENU:
+	break;
+
+	// System character key
+
+    case WM_SYSCHAR:
 	break;
 
 	// Character key pressed
@@ -786,7 +818,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// All the other function keys and the space bar
 
     case WM_KEYDOWN:
-	NoteOn(wParam, lParam);
+	KeyDown(wParam, lParam);
 	break;
 
 	// F10 key generates a WM_SYSKEYUP message
@@ -796,7 +828,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// All the other function keys and the space bar
 
     case WM_KEYUP:
-	NoteOff(wParam, lParam);
+	KeyUp(wParam, lParam);
 	break;
 
 	// Volume control
@@ -952,13 +984,18 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	case QUIT:
 	    if (HIWORD(wParam) == BN_CLICKED)
+	    {
 		if (MessageBox(hWnd,
 			       "Really?",
 			       "Quit",
 			       MB_OKCANCEL |
 			       MB_ICONQUESTION |
 			       MB_DEFBUTTON1) == IDOK)
+		{
+		    midiOutClose(hmdo);
 		    PostQuitMessage(0);
+		}
+	    }
 	    break;
 	}
 	break;
@@ -966,6 +1003,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
         // Process other messages.
 
     case WM_DESTROY:
+	midiOutClose(hmdo);
 	PostQuitMessage(0);
 	break;
 
@@ -983,7 +1021,10 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 UINT ChangeInstrument(HWND hinst)
 {
     int inst = SendMessage(hinst, CB_GETCURSEL, 0, 0);
-    return ShortMessage(CHANGE, inst, 0);
+    ShortMessage(CHANGE, inst, 0);
+    ShortMessage(CHANGE + 1, inst, 0);
+    ShortMessage(CHANGE + 2, inst, 0);
+    ShortMessage(CHANGE + 3, inst, 0);
 }
 
 // Reverse buttons
@@ -1029,7 +1070,7 @@ UINT ShortMessage(BYTE s, BYTE n, BYTE v)
 
 // Send a note on message
 
-UINT NoteOn(WPARAM w, LPARAM l)
+UINT KeyDown(WPARAM w, LPARAM l)
 {
     // Check for a function key
 
@@ -1047,22 +1088,25 @@ UINT NoteOn(WPARAM w, LPARAM l)
 	    // Look up the note and play it
 
 	    buttons[n] = TRUE;
-	    int note = notes[layout][n][bellows] + keyvals[key];
 	    SendMessage(display[m], BM_SETSTATE, TRUE, 0);
+	    int note = notes[layout][n][bellows] + keyvals[key];
 	    return ShortMessage(NOTEON, note, volume);
 	}
     }
 
     // Check for the control key
-#ifdef BASS
+#ifdef BASSBUTTONS
     else if (w == VK_CONTROL)
     {
 	if (!control)
 	{
 	    control = TRUE;
-	    SendMessage(bassend[0], BM_SETSTATE, TRUE, 0);
-	    int note = bass[bellows] + keyvals[key];
-	    return ShortMessage(NOTEON, note, volume);
+	    if (GetKeyState(VK_LCONTROL) < 0)
+		SendMessage(bassdisp[LEFT][BASS], BM_SETSTATE, TRUE, 0);
+	    if (GetKeyState(VK_RCONTROL) < 0)
+		SendMessage(bassdisp[RIGHT][BASS], BM_SETSTATE, TRUE, 0);
+	    int note = bass[key][bellows];
+	    ShortMessage(BASSON, note, volume);
 	}
     }
 
@@ -1073,11 +1117,14 @@ UINT NoteOn(WPARAM w, LPARAM l)
 	if (!alt)
 	{
 	    alt = TRUE;
-	    SendMessage(bassend[1], BM_SETSTATE, TRUE, 0);
-	    int note = chord[0][bellows] + keyvals[key];
-	    ShortMessage(NOTEON, note, volume);
-	    note = chord[1][bellows] + keyvals[key];
-	    return ShortMessage(NOTEON + 1, note, volume);
+	    if (GetKeyState(VK_LMENU) < 0)
+		SendMessage(bassdisp[LEFT][CHORD], BM_SETSTATE, TRUE, 0);
+	    if (GetKeyState(VK_RMENU) < 0)
+		SendMessage(bassdisp[RIGHT][CHORD], BM_SETSTATE, TRUE, 0);
+	    int note = chord[key][BASS][bellows];
+	    ShortMessage(CHRDON, note, volume);
+	    note = chord[key][CHORD][bellows];
+	    ShortMessage(CHRDON + 1, note, volume);
 	}
     }
 #endif
@@ -1095,19 +1142,19 @@ UINT NoteOn(WPARAM w, LPARAM l)
 	    bellows = TRUE;
 	    SendMessage(spacebar, BM_SETSTATE, TRUE, 0);
 	    midiOutReset(hmdo);
-#ifdef BASS
+#ifdef BASSBUTTONS
 	    if (control)
 	    {
-		int note = bass[bellows] + keyvals[key];
-		ShortMessage(NOTEON, note, volume);
+		int note = bass[key][bellows];
+		ShortMessage(BASSON, note, volume);
 	    }
 
 	    if (alt)
 	    {
-		int note = chord[0][bellows] + keyvals[key];
-		ShortMessage(NOTEON, note, volume);
-		note = chord[1][bellows] + keyvals[key];
-		ShortMessage(NOTEON + 1, note, volume);
+		int note = chord[key][BASS][bellows];
+		ShortMessage(CHRDON, note, volume);
+		note = chord[key][CHORD][bellows];
+		ShortMessage(CHRDON + 1, note, volume);
 	    }
 #endif
 	    for (i = 0; i != LENGTH(buttons); i++)
@@ -1120,13 +1167,11 @@ UINT NoteOn(WPARAM w, LPARAM l)
 	    }
 	}
     }
-
-    return 0;
 }
 
 // Send a note off message
 
-UINT NoteOff(WPARAM w, LPARAM l)
+UINT KeyUp(WPARAM w, LPARAM l)
 {
     // Check for a function key
 
@@ -1143,23 +1188,24 @@ UINT NoteOff(WPARAM w, LPARAM l)
 	{
 	    // Look up the note and stop it
 
-	    int note = notes[layout][n][bellows] + keyvals[key];
 	    buttons[n] = FALSE;
 	    SendMessage(display[m], BM_SETSTATE, FALSE, 0);
-	    return ShortMessage(NOTEOFF, note, volume);
+	    int note = notes[layout][n][bellows] + keyvals[key];
+	    ShortMessage(NOTEOFF, note, volume);
 	}
     }
 
     // Check for the control key
-#ifdef BASS
+#ifdef BASSBUTTONS
     else if (w == VK_CONTROL)
     {
 	if (control)
 	{
 	    control = FALSE;
-	    SendMessage(bassend[0], BM_SETSTATE, FALSE, 0);
-	    int note = bass[bellows] + keyvals[key];
-	    return ShortMessage(NOTEOFF, note, volume);
+	    SendMessage(bassdisp[LEFT][BASS], BM_SETSTATE, FALSE, 0);
+	    SendMessage(bassdisp[RIGHT][BASS], BM_SETSTATE, FALSE, 0);
+	    int note = bass[key][bellows];
+	    ShortMessage(BASSOFF, note, volume);
 	}
     }
 
@@ -1170,11 +1216,12 @@ UINT NoteOff(WPARAM w, LPARAM l)
 	if (alt)
 	{
 	    alt = FALSE;
-	    SendMessage(bassend[1], BM_SETSTATE, FALSE, 0);
-	    int note = chord[0][bellows] + keyvals[key];
-	    ShortMessage(NOTEOFF, note, volume);
-	    note = chord[1][bellows] + keyvals[key];
-	    return ShortMessage(NOTEOFF + 1, note, volume);
+	    SendMessage(bassdisp[LEFT][CHORD], BM_SETSTATE, FALSE, 0);
+	    SendMessage(bassdisp[RIGHT][CHORD], BM_SETSTATE, FALSE, 0);
+	    int note = chord[key][BASS][bellows];
+	    ShortMessage(CHRDOFF, note, volume);
+	    note = chord[key][CHORD][bellows];
+	    ShortMessage(CHRDOFF + 1, note, volume);
 	}
     }
 #endif
@@ -1192,19 +1239,19 @@ UINT NoteOff(WPARAM w, LPARAM l)
 	    bellows = FALSE;
 	    SendMessage(spacebar, BM_SETSTATE, FALSE, 0);
 	    midiOutReset(hmdo);
-#ifdef BASS
+#ifdef BASSBUTTONS
 	    if (control)
 	    {
-		int note = bass[bellows] + keyvals[key];
-		ShortMessage(NOTEON, note, volume);
+		int note = bass[key][bellows];
+		ShortMessage(BASSON, note, volume);
 	    }
 
 	    if (alt)
 	    {
-		int note = chord[0][bellows] + keyvals[key];
-		ShortMessage(NOTEON, note, volume);
-		note = chord[1][bellows] + keyvals[key];
-		ShortMessage(NOTEON + 1, note, volume);
+		int note = chord[key][BASS][bellows];
+		ShortMessage(CHRDON, note, volume);
+		note = chord[key][CHORD][bellows];
+		ShortMessage(CHRDON + 1, note, volume);
 	    }
 #endif
 	    for (i = 0; i != LENGTH(buttons); i++)
@@ -1217,6 +1264,4 @@ UINT NoteOff(WPARAM w, LPARAM l)
 	    }
 	}
     }
-
-    return 0;
 }
