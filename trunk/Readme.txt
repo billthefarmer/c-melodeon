@@ -35,16 +35,27 @@ box according to which hand you want to use. Press the keys as if they
 were melodeon buttons, and press the space bar to emulate waggling the
 bellows.
 
+                              Sruti box
+                              =========
+
+Simple sruti box emulator with 12 buttons in C or G. Choice of midi
+instruments. Use the instrument and key drop downs to change the midi
+instrument and key, use the volume control to change the volume.
+
 Files
 =====
 
-COPYING			- Licence file
 Changes			- Change log
+COPYING			- Licence file
+Makefile		- Build file
 Melodeon.c		- Source file
 Melodeon.exe		- Application
 Melodeon.exe.manifest	- Manifest file
 Melodeon.nsi		- NSIS installer script
-Makefile		- Build file
+Srutibox.c		- Source file
+Srutibox.exe		- Application
+Srutibox.exe.manifest	- Manifest file
+Srutibox.nsi		- NSIS installer script
 Readme.txt		- This file
 
 Building
