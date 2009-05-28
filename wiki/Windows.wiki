@@ -1,0 +1,11 @@
+#summary Windows comments.
+
+= Introduction =
+
+Comments on the Windows version.
+
+http://melodeon.googlecode.com/files/Photo_editor.png
+
+== Comments ==
+
+There is a very nice tool bundled with earlier versions of Microsoft Office, which enables you to take screen shots of new applications, zoom in on them, and use the selection tool to measure how your widgets line up. All the dimensions are in the status line in units of your choice. I haven't found a similar tool for linux. But then Gtk lines them up for you, but you might want to do a bit of adjustment.
