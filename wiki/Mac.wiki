@@ -1,4 +1,4 @@
-#summary Mac progress.
+#summary Mac version progress.
 #labels Featured
 
 = Introduction =
