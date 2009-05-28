@@ -55,12 +55,22 @@
 
 #define BASS  0
 #define CHORD 1
-#define LEFT  0
-#define RIGHT 1
+
+// Max volume
+
+#define MAXVOL 127
 
 // Bass buttons
 
 #define BASSBUTTONS
+
+// Buttons
+
+#define BUTTONS 12
+
+// Button size
+
+#define SIZE 34
 
 // Global handles
 
@@ -131,7 +141,7 @@ UINT layout;
 
 // Midi notes for 'C'
 
-BYTE notes[2][12][2] =
+BYTE notes[LENGTH(layouts)][BUTTONS][2] =
     {{{48, 53},
       {52, 57},
       {55, 59},
@@ -179,36 +189,30 @@ byte chord[LENGTH(keys)][2][2] =
 #endif
 // Buttons
 
-BOOL buttons[12];
+BOOL buttons[BUTTONS];
 #ifdef BASSBUTTONS
 BOOL control;
-BOOL alt;
+BOOL menu;
 #endif
 // Bellows handle
 
 BOOL bellows;
 
-// Reverse handle
+// Reverse value
 
-HWND hrev;
 BOOL reverse;
 
-// Volume handle
+// Volume value
 
-HWND hvol;
-UINT volume = 127;
+UINT volume = MAXVOL;
 
 // Display handles
 
-HWND display[12];
+HWND display[BUTTONS];
 #ifdef BASSBUTTONS
-HWND bassdisp[2][2];
+HWND bassdisp[2];
 #endif
 HWND spacebar;
-
-// Status bar handle
-
-HWND status;
 
 // Function prototypes.
 
@@ -218,6 +222,7 @@ UINT ChangeInstrument(HWND);
 UINT ReverseButtons(HWND);
 UINT ChangeLayout(HWND);
 UINT ChangeKey(HWND);
+UINT ChangeVolume(WPARAM, LPARAM);
 UINT KeyDown(WPARAM, LPARAM);
 UINT KeyUp(WPARAM, LPARAM);
 UINT ShortMessage(BYTE, BYTE, BYTE);
@@ -302,11 +307,11 @@ int WINAPI WinMain(HINSTANCE hInstance,
     // Process messages
 
     MSG msg;
-    BOOL bmsg;
+    BOOL flag;
 
-    while ((bmsg = GetMessage(&msg, (HWND)NULL, 0, 0)) != 0)
+    while ((flag = GetMessage(&msg, (HWND)NULL, 0, 0)) != 0)
     {
-	if (bmsg == -1)
+	if (flag == -1)
 	    break;
 
         TranslateMessage(&msg);
@@ -323,16 +328,25 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			     WPARAM wParam,
 			     LPARAM lParam)
 {
+    // Tool handles
+
     static HWND hgrp;
     static HWND inst;
     static HWND hkey;
     static HWND hlay;
+    static HWND hvol;
+    static HWND hrev;
     static HWND quit;
     static HWND text;
+    static HWND stat;
+
+    // Selection values
 
     static int ival;
     static int kval;
     static int lval;
+
+    // Window dimensions
 
     RECT rwnd;
     RECT rclt;
@@ -357,9 +371,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Set new dimensions
 
 	SetWindowPos(hWnd,          // Window
-		     NULL,          // No Z order
-		     0,             // No x
-		     0,             // No y
+		     NULL, 0, 0,    // No z, x, y
 		     width,         // width
 		     height,        // height
 		     SWP_NOMOVE |   // Don't move
@@ -367,11 +379,11 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Create status bar
 
-	status =
+	stat =
 	    CreateWindow(STATUSCLASSNAME, // Predefined class.
-			 " Press the function keys F1 - F12"
-			 " as melodeon buttons and the space"
-			 " bar as the bellows. Fourth button"
+			 " Press the function keys F1-F12 as"
+			 " melodeon buttons and the space bar"
+			 " as the bellows. 4th button"
 			 " start.",   // Text.
 			 WS_VISIBLE | WS_CHILD, // Styles.
 			 0, 0, 0, 0,  // no size or position.
@@ -392,7 +404,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 530,         // width.
 			 86,          // height.
 			 hWnd,        // Parent window.
-			 (HMENU)INST, // Id.
+			 NULL,        // No id.
 			 hinst,       // handle to application instance
 			 NULL);       // Pointer not needed.
 
@@ -519,7 +531,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL,         // no text
 			 WS_VISIBLE | WS_CHILD |
 			 SBS_HORZ,     // scroll bar styles
-			 102,           // horizontal position
+			 102,          // horizontal position
 			 59,           // vertical position
 			 168,          // width of the scroll bar
 			 16,           // height of the scroll bar
@@ -531,7 +543,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	SetScrollRange(hvol,
 		       SB_CTL,
 		       0,
-		       127,
+		       MAXVOL,
 		       FALSE);
 
 	SetScrollPos(hvol,
@@ -576,7 +588,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	for (i = 0; i != LENGTH(layouts); i++)
 	    SendMessage(hlay, CB_ADDSTRING, 0, (LPARAM)layouts[i]);
 
-	// Select C
+	// Select Hohner
 
 	SendMessage(hlay, CB_SELECTSTRING, -1, (LPARAM)"Hohner");
 
@@ -608,7 +620,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 530,         // width.
 			 152,         // height.
 			 hWnd,        // Parent window.
-			 (HMENU)INST, // Id.
+			 NULL,        // No id.
 			 hinst,       // handle to application instance
 			 NULL);       // Pointer not needed.
 
@@ -631,9 +643,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Get status bar dimensions
 
-	GetWindowRect(status, &rwnd);
+	GetWindowRect(stat, &rwnd);
 
-	// Get client dimensions
+	// Get window client dimensions
 
 	GetClientRect(hWnd, &rclt);
 
@@ -653,7 +665,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 530,         // width.
 			 108,         // height.
 			 hWnd,        // Parent window.
-			 (HMENU)INST, // Id.
+			 NULL,        // No id.
 			 hinst,       // handle to application instance
 			 NULL);       // Pointer not needed.
 
@@ -666,8 +678,8 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 BS_PUSHBUTTON, // Styles.
 			 150,         // x position.
 			 bottom - 98,  // y position.
-			 250,         // width.
-			 34,          // height.
+			 249,         // width.
+			 SIZE,        // height.
 			 hWnd,        // Parent window.
 			 (HMENU)BTNS, // Id.
 			 hinst,       // handle to application instance
@@ -677,29 +689,15 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 #ifdef BASSBUTTONS
 	for (i = 0; i != LENGTH(bassdisp); i++)
 	{
-	    bassdisp[LEFT][i] =
+	    bassdisp[i] =
 		CreateWindow(WC_BUTTON,  // Predefined class.
 			     NULL,       // No text.
 			     WS_VISIBLE | WS_CHILD |
 			     BS_PUSHBUTTON, // Styles.
 			     21 + 86 * i, // x position.
 			     bottom - 98, // y position.
-			     34,          // width.
-			     34,          // height.
-			     hWnd,        // Parent window.
-			     (HMENU)BTNS, // Id.
-			     hinst,       // handle to application instance
-			     NULL);       // Pointer not needed.
-
-	    bassdisp[RIGHT][i] =
-		CreateWindow(WC_BUTTON,  // Predefined class.
-			     NULL,       // No text.
-			     WS_VISIBLE | WS_CHILD |
-			     BS_PUSHBUTTON, // Styles.
-			     494 - 86 * i, // x position.
-			     bottom - 98, // y position.
-			     34,          // width.
-			     34,          // height.
+			     SIZE,        // width.
+			     SIZE,        // height.
 			     hWnd,        // Parent window.
 			     (HMENU)BTNS, // Id.
 			     hinst,       // handle to application instance
@@ -717,8 +715,8 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			     BS_PUSHBUTTON, // Styles.
 			     21 + 43 * i, // x position.
 			     bottom - 54, // y position.
-			     34,          // width.
-			     34,          // height.
+			     SIZE,        // width.
+			     SIZE,        // height.
 			     hWnd,        // Parent window.
 			     (HMENU)BTNS, // Id.
 			     hinst,       // handle to application instance
@@ -753,7 +751,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
     case WM_INITMENU:
 	break;
 
-	// System character key
+	// Capture system character key to stop pop up menus
 
     case WM_SYSCHAR:
 	break;
@@ -763,6 +761,8 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
     case WM_CHAR:
 	switch (wParam)
 	{
+	    // Change key
+
 	case 'E':
 	case 'e':
 	    s = "Eb";
@@ -798,14 +798,20 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	    s = "A";
 	    break;
 
+	    // Reverse buttons
+
 	case 'R':
 	case 'r':
 	    ReverseButtons(hrev);
 	    return 0;
 
+	    // Anything else
+
 	default:
 	    return 0;
 	}
+
+	// Change key
 
 	SendMessage(hkey, CB_SELECTSTRING, -1, (LPARAM)s);
 	ChangeKey(hkey);
@@ -834,41 +840,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Volume control
 
     case WM_HSCROLL:
-	switch (LOWORD(wParam))
-	{
-	case SB_THUMBPOSITION:
-	    volume = HIWORD(wParam);
-	    break;
-
-	case SB_LINELEFT:
-	    volume--;
-	    if (volume < 0)
-		volume = 0;
-	    break;
-
-	case SB_LINERIGHT:
-	    volume++;
-	    if (volume > 127)
-		volume = 127;
-	    break;
-
-	case SB_PAGELEFT:
-	    volume -= 10;
-	    if (volume < 0)
-		volume = 0;
-	    break;
-
-	case SB_PAGERIGHT:
-	    volume += 10;
-	    if (volume > 127)
-		volume = 127;
-	    break;
-	}
-
-	SetScrollPos((HWND)lParam,
-		     SB_CTL,
-		     volume,
-		     TRUE);
+	ChangeVolume(wParam, lParam);
 
 	// Set the focus back to the window
 
@@ -886,7 +858,13 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Focus lost
 
     case WM_KILLFOCUS:
+
+	// Stop all notes
+
 	midiOutReset(hmdo);
+
+	// Reset all the buttons
+
 	for (i = 0; i != LENGTH(buttons); i++)
 	{
 	    if (buttons[i])
@@ -895,6 +873,24 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	    if (SendMessage(display[i], BM_GETSTATE, 0, 0))
 		SendMessage(display[i], BM_SETSTATE, FALSE, 0);
 	}
+#ifdef BASSBUTTONS
+	if (control)
+	    control = FALSE;
+
+	if (menu)
+	    menu = FALSE;
+
+	for (i = 0; i != LENGTH(bassdisp); i++)
+	{
+	    if (SendMessage(bassdisp[i], BM_GETSTATE, 0, 0))
+		SendMessage(bassdisp[i], BM_SETSTATE, FALSE, 0);
+	}
+#endif
+	if (bellows)
+	    bellows = FALSE;
+
+	if (SendMessage(spacebar, BM_GETSTATE, 0, 0))
+	    SendMessage(spacebar, BM_SETSTATE, FALSE, 0);
 	break;
 
 	// WM_COMMAND from one of the controls
@@ -913,11 +909,17 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	    case CBN_SELENDOK:
 		ChangeInstrument((HWND)lParam);
+
+		// Set the focus back to the window
+
 		SetFocus(hWnd);
 		break;
 
 	    case CBN_SELENDCANCEL:
 		SendMessage((HWND)lParam, CB_SETCURSEL, ival, 0);
+
+		// Set the focus back to the window
+
 		SetFocus(hWnd);
 		break;
 	    }
@@ -945,15 +947,23 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	    case CBN_SELENDOK:
 		ChangeKey((HWND)lParam);
+
+		// Set the focus back to the window
+
 		SetFocus(hWnd);
 		break;
 
 	    case CBN_SELENDCANCEL:
 		SendMessage((HWND)lParam, CB_SETCURSEL, kval, 0);
+
+		// Set the focus back to the window
+
 		SetFocus(hWnd);
 		break;
 	    }
 	    break;
+
+	    // Layout control
 
 	case LAYT:
 	    switch (HIWORD(wParam))
@@ -964,11 +974,17 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	    case CBN_SELENDOK:
 		ChangeLayout((HWND)lParam);
+
+		// Set the focus back to the window
+
 		SetFocus(hWnd);
 		break;
 
 	    case CBN_SELENDCANCEL:
 		SendMessage((HWND)lParam, CB_SETCURSEL, lval, 0);
+
+		// Set the focus back to the window
+
 		SetFocus(hWnd);
 		break;
 	    }
@@ -1003,6 +1019,10 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
         // Process other messages.
 
     case WM_DESTROY:
+
+	// Stop all notes
+
+	midiOutReset(hmdo);
 	midiOutClose(hmdo);
 	PostQuitMessage(0);
 	break;
@@ -1024,7 +1044,6 @@ UINT ChangeInstrument(HWND hinst)
     ShortMessage(CHANGE, inst, 0);
     ShortMessage(CHANGE + 1, inst, 0);
     ShortMessage(CHANGE + 2, inst, 0);
-    ShortMessage(CHANGE + 3, inst, 0);
 }
 
 // Reverse buttons
@@ -1045,30 +1064,60 @@ UINT ChangeKey(HWND hkey)
     key = SendMessage(hkey, CB_GETCURSEL, 0, 0);
 }
 
+UINT ChangeVolume(WPARAM wParam, LPARAM lParam)
+{
+	switch (LOWORD(wParam))
+	{
+	    // Adjustments
+
+	case SB_THUMBPOSITION:
+	    volume = HIWORD(wParam);
+	    break;
+
+	case SB_LINELEFT:
+	    volume--;
+	    if (volume < 0)
+		volume = 0;
+	    break;
+
+	case SB_LINERIGHT:
+	    volume++;
+	    if (volume > MAXVOL)
+		volume = MAXVOL;
+	    break;
+
+	case SB_PAGELEFT:
+	    volume -= 10;
+	    if (volume < 0)
+		volume = 0;
+	    break;
+
+	case SB_PAGERIGHT:
+	    volume += 10;
+	    if (volume > MAXVOL)
+		volume = MAXVOL;
+	    break;
+
+	default:
+	    return;
+	}
+
+	// Set the new position
+
+	SetScrollPos((HWND)lParam,
+		     SB_CTL,
+		     volume,
+		     TRUE);
+}
+
+// Change layout
+
 UINT ChangeLayout(HWND hlay)
 {
     layout = SendMessage(hlay, CB_GETCURSEL, 0, 0);
 }
 
-// Send a short midi message
-
-UINT ShortMessage(BYTE s, BYTE n, BYTE v)
-{
-    union
-    {
-	DWORD dw;
-	BYTE b[4];
-    } smsg;
-
-    smsg.b[0] = s;
-    smsg.b[1] = n;
-    smsg.b[2] = v;
-    smsg.b[3] = 0;
-
-    return midiOutShortMsg(hmdo, smsg.dw);
-}
-
-// Send a note on message
+// Key pressed
 
 UINT KeyDown(WPARAM w, LPARAM l)
 {
@@ -1090,7 +1139,7 @@ UINT KeyDown(WPARAM w, LPARAM l)
 	    buttons[n] = TRUE;
 	    SendMessage(display[m], BM_SETSTATE, TRUE, 0);
 	    int note = notes[layout][n][bellows] + keyvals[key];
-	    return ShortMessage(NOTEON, note, volume);
+	    ShortMessage(NOTEON, note, volume);
 	}
     }
 
@@ -1101,30 +1150,24 @@ UINT KeyDown(WPARAM w, LPARAM l)
 	if (!control)
 	{
 	    control = TRUE;
-	    if (GetKeyState(VK_LCONTROL) < 0)
-		SendMessage(bassdisp[LEFT][BASS], BM_SETSTATE, TRUE, 0);
-	    if (GetKeyState(VK_RCONTROL) < 0)
-		SendMessage(bassdisp[RIGHT][BASS], BM_SETSTATE, TRUE, 0);
+	    SendMessage(bassdisp[BASS], BM_SETSTATE, TRUE, 0);
 	    int note = bass[key][bellows];
 	    ShortMessage(BASSON, note, volume);
 	}
     }
 
-    // Check for the alt key
+    // Check for the menu key
 
     else if (w == VK_MENU)
     {
-	if (!alt)
+	if (!menu)
 	{
-	    alt = TRUE;
-	    if (GetKeyState(VK_LMENU) < 0)
-		SendMessage(bassdisp[LEFT][CHORD], BM_SETSTATE, TRUE, 0);
-	    if (GetKeyState(VK_RMENU) < 0)
-		SendMessage(bassdisp[RIGHT][CHORD], BM_SETSTATE, TRUE, 0);
+	    menu = TRUE;
+	    SendMessage(bassdisp[CHORD], BM_SETSTATE, TRUE, 0);
 	    int note = chord[key][BASS][bellows];
 	    ShortMessage(CHRDON, note, volume);
 	    note = chord[key][CHORD][bellows];
-	    ShortMessage(CHRDON + 1, note, volume);
+	    ShortMessage(CHRDON, note, volume);
 	}
     }
 #endif
@@ -1149,11 +1192,11 @@ UINT KeyDown(WPARAM w, LPARAM l)
 		ShortMessage(BASSON, note, volume);
 	    }
 
-	    if (alt)
+	    if (menu)
 	    {
-		int note = chord[key][BASS][bellows];
+		int note = chord[key][0][bellows];
 		ShortMessage(CHRDON, note, volume);
-		note = chord[key][CHORD][bellows];
+		note = chord[key][1][bellows];
 		ShortMessage(CHRDON + 1, note, volume);
 	    }
 #endif
@@ -1169,7 +1212,7 @@ UINT KeyDown(WPARAM w, LPARAM l)
     }
 }
 
-// Send a note off message
+// Key released
 
 UINT KeyUp(WPARAM w, LPARAM l)
 {
@@ -1191,7 +1234,7 @@ UINT KeyUp(WPARAM w, LPARAM l)
 	    buttons[n] = FALSE;
 	    SendMessage(display[m], BM_SETSTATE, FALSE, 0);
 	    int note = notes[layout][n][bellows] + keyvals[key];
-	    ShortMessage(NOTEOFF, note, volume);
+	    ShortMessage(NOTEOFF, note, 0);
 	}
     }
 
@@ -1202,26 +1245,24 @@ UINT KeyUp(WPARAM w, LPARAM l)
 	if (control)
 	{
 	    control = FALSE;
-	    SendMessage(bassdisp[LEFT][BASS], BM_SETSTATE, FALSE, 0);
-	    SendMessage(bassdisp[RIGHT][BASS], BM_SETSTATE, FALSE, 0);
+	    SendMessage(bassdisp[BASS], BM_SETSTATE, FALSE, 0);
 	    int note = bass[key][bellows];
-	    ShortMessage(BASSOFF, note, volume);
+	    ShortMessage(BASSOFF, note, 0);
 	}
     }
 
-    // Check for the alt key
+    // Check for the menu key
 
     else if (w == VK_MENU)
     {
-	if (alt)
+	if (menu)
 	{
-	    alt = FALSE;
-	    SendMessage(bassdisp[LEFT][CHORD], BM_SETSTATE, FALSE, 0);
-	    SendMessage(bassdisp[RIGHT][CHORD], BM_SETSTATE, FALSE, 0);
-	    int note = chord[key][BASS][bellows];
-	    ShortMessage(CHRDOFF, note, volume);
-	    note = chord[key][CHORD][bellows];
-	    ShortMessage(CHRDOFF + 1, note, volume);
+	    menu = FALSE;
+	    SendMessage(bassdisp[CHORD], BM_SETSTATE, FALSE, 0);
+	    int note = chord[key][0][bellows];
+	    ShortMessage(CHRDOFF, note, 0);
+	    note = chord[key][1][bellows];
+	    ShortMessage(CHRDOFF, note, 0);
 	}
     }
 #endif
@@ -1246,12 +1287,12 @@ UINT KeyUp(WPARAM w, LPARAM l)
 		ShortMessage(BASSON, note, volume);
 	    }
 
-	    if (alt)
+	    if (menu)
 	    {
-		int note = chord[key][BASS][bellows];
+		int note = chord[key][0][bellows];
 		ShortMessage(CHRDON, note, volume);
-		note = chord[key][CHORD][bellows];
-		ShortMessage(CHRDON + 1, note, volume);
+		note = chord[key][1][bellows];
+		ShortMessage(CHRDON, note, volume);
 	    }
 #endif
 	    for (i = 0; i != LENGTH(buttons); i++)
@@ -1264,4 +1305,22 @@ UINT KeyUp(WPARAM w, LPARAM l)
 	    }
 	}
     }
+}
+
+// Send a short midi message
+
+UINT ShortMessage(BYTE s, BYTE n, BYTE v)
+{
+    union
+    {
+	DWORD dw;
+	BYTE b[4];
+    } smsg;
+
+    smsg.b[0] = s;
+    smsg.b[1] = n;
+    smsg.b[2] = v;
+    smsg.b[3] = 0;
+
+    return midiOutShortMsg(hmdo, smsg.dw);
 }

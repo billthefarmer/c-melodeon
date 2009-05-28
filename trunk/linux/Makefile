@@ -1,6 +1,6 @@
 ################################################################################
 #
-#  Makefile for Melodeon and Sruti box
+#  Makefile for Melodeon
 #
 ################################################################################
 
@@ -9,7 +9,7 @@ GCC	= gcc
 all:	Melodeon
 
 clean:
-	rm *.exe
+	rm Melodeon
 
 %:	%.c
 	$(GCC) $< -o $* `pkg-config --cflags --libs gtk+-2.0`
