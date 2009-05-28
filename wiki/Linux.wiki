@@ -1,0 +1,26 @@
+#summary Linux version progress.
+#labels Featured
+
+= Introduction =
+
+A linux version is in development using Gtk+.
+
+http://melodeon.googlecode.com/files/Screenshot-Melodeon.png
+
+== Issues ==
+
+There are several things to be done to get this emulator working on any given platform:
+
+ * Learn the gui for the platform, in this case there is a choice of Gtk+ or QT. I chose Gtk+ because I use Ubuntu, which uses Gnome.
+
+ * Find out how to capture user keystrokes. This isn't necessarily as simple as it seems, as we are using the function keys, and the control and alt keys. In windows the F10 key goes somewhere different from the others.
+
+ * Find out how to stop unwanted keyboard side effects, like alt-spacebar. I have done this in windows, but not yet in linux.
+
+ * Find out how to send midi events to either a built in midi synthesizer (windows), or a synthesizer on the sound card.
+
+== Progress ==
+
+ * I have created the user interface, with interaction with the tool widgets and the keyboard. I have not found out yet how to stop the alt-spacebar side effect, which pops up the application window menu and spoils the fun. This is potential show stopper.
+
+ * I have found out how to use ALSA to send midi messages to the sound card. There are conflicting messages out there as to whether current linux kernels need/load a sound bank file into the sound card. To be investigated...
