@@ -23,6 +23,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 
 // Macros
 
@@ -54,6 +55,14 @@
 // Buttons
 
 #define BUTTONS 12
+
+// Button size
+
+#define SIZE 34
+
+// Space
+
+#define SPACE 10
 
 // List of midi instruments
 
@@ -119,7 +128,7 @@ int layout;
 
 // Midi notes for 'C'
 
-int notes[2][12][2] =
+int notes[LENGTH(layouts)][BUTTONS][2] =
     {{{48, 53},
       {52, 57},
       {55, 59},
@@ -170,11 +179,11 @@ int chord[LENGTH(keys)][2][2] =
 gboolean buttons[BUTTONS];
 #ifdef BASSBUTTONS
 gboolean control;
-gboolean menu;
+gboolean alt;
 #endif
 gboolean bellows;
 
-// Display
+// Display widgets
 
 GtkWidget *display[BUTTONS];
 #ifdef BASSBUTTONS
@@ -182,9 +191,17 @@ GtkWidget *bassdisp[2];
 #endif
 GtkWidget *spacebar;
 
-// Function decalarations
+// Reverse buttons
 
-int quit(GtkWidget*, GtkWindow*);
+gboolean reverse;
+
+// Function declarations
+
+int quit_clicked(GtkWidget*, GtkWindow*);
+int button_clicked(GtkWidget*, gboolean*);
+int key_press(GtkWidget*, GdkEventKey*, gpointer);
+int key_release(GtkWidget*, GdkEventKey*, gpointer);
+int key_snoop(GtkWidget*, GdkEventKey*, gpointer);
 
 // Main function
 
@@ -193,16 +210,18 @@ int main(int argc, char *argv[])
     // Widgets
 
     GtkWidget *window;
+    GtkWidget *vbox;
     GtkWidget *wbox;
     GtkWidget *hbox;
-    GtkWidget *vbox;
-    GtkWidget *ybox;
+    GtkWidget *gbox;
     GtkWidget *table;
     GtkWidget *frame;
     GtkWidget *label;
     GtkWidget *combo;
-    GtkWidget *buttn;
-    GtkWidget *separ;
+    GtkWidget *quit;
+    GtkWidget *volume;
+    GtkWidget *reverse;
+    GtkWidget *separator;
 
     int i;
 
@@ -210,18 +229,25 @@ int main(int argc, char *argv[])
 
     gtk_init(&argc, &argv);
 
-    // Create window
+    // This key snooper is an attempt to find out how to defeat the
+    // alt-spacebar window menu which breaks the bass buttons.
+
+    gtk_key_snooper_install(key_snoop, NULL);
+
+    // Create main window
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Melodeon");
     gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
 
-    // W box
+    // W box, this contains the fake status bar and the rest of the
+    // display
 
     wbox = gtk_vbox_new(FALSE, 0);
     gtk_container_add(GTK_CONTAINER(window), wbox);
 
-    // Label
+    // Label, this label and separator are a fake status bar that can
+    // have small text
 
     label = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(label),
@@ -232,30 +258,30 @@ int main(int argc, char *argv[])
 
     // Separator
 
-    separ = gtk_hseparator_new();
-    gtk_box_pack_end(GTK_BOX(wbox), separ, FALSE, FALSE, 0);
+    separator = gtk_hseparator_new();
+    gtk_box_pack_end(GTK_BOX(wbox), separator, FALSE, FALSE, 0);
 
-    // V box
+    // V box, this contains three frames
 
-    vbox = gtk_vbox_new(FALSE, 10);
-    gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
+    vbox = gtk_vbox_new(FALSE, SPACE);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), SPACE);
     gtk_box_pack_start(GTK_BOX(wbox), vbox, FALSE, FALSE, 0);
 
-    // Frame
+    // Frame, this contains all the tool widgets
 
     frame = gtk_frame_new(NULL);
     gtk_box_pack_start(GTK_BOX(vbox), frame, FALSE, FALSE, 0);
 
-    // Y Box
+    // W Box
 
-    ybox = gtk_vbox_new(FALSE, 10);
-    gtk_container_set_border_width(GTK_CONTAINER(ybox), 10);
-    gtk_container_add(GTK_CONTAINER(frame), ybox);
+    wbox = gtk_vbox_new(FALSE, SPACE);
+    gtk_container_set_border_width(GTK_CONTAINER(wbox), SPACE);
+    gtk_container_add(GTK_CONTAINER(frame), wbox);
 
     // H box
 
-    hbox = gtk_hbox_new(FALSE, 10);
-    gtk_box_pack_start(GTK_BOX(ybox), hbox, FALSE, FALSE, 0);
+    hbox = gtk_hbox_new(FALSE, SPACE);
+    gtk_box_pack_start(GTK_BOX(wbox), hbox, FALSE, FALSE, 0);
 
     // Instrument label
 
@@ -280,38 +306,46 @@ int main(int argc, char *argv[])
     for (i = 0; i != LENGTH(keys); i++)
       if (strcmp(keys[i], "C") == 0)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
-    gtk_box_pack_end(GTK_BOX(hbox), combo, FALSE, FALSE, 0);
+    gtk_widget_set_size_request(combo, 53, 29);
+    gtk_box_pack_end(GTK_BOX(hbox), combo, FALSE, FALSE, 1);
 
     // Key label
 
     label = gtk_label_new("Key:");
-    gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 1);
 
     // Reverse check button
 
-    buttn = gtk_check_button_new_with_label("Reverse buttons");
-    gtk_box_pack_end(GTK_BOX(hbox), buttn, FALSE, FALSE, 0);
+    reverse = gtk_check_button_new_with_label("Reverse buttons");
+    gtk_box_pack_end(GTK_BOX(hbox), reverse, FALSE, FALSE, 0);
 
     // H box
 
-    hbox = gtk_hbox_new(FALSE, 10);
-    gtk_box_pack_start(GTK_BOX(ybox), hbox, FALSE, FALSE, 0);
+    hbox = gtk_hbox_new(FALSE, SPACE);
+    gtk_box_pack_start(GTK_BOX(wbox), hbox, FALSE, FALSE, 0);
 
-    // Volume label
+    // Port label
 
-    label = gtk_label_new("Volume:");
+    label = gtk_label_new("Port:");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-    // Volume button
+    // Layout combo box
 
-    buttn = gtk_volume_button_new ();
-    gtk_box_pack_start(GTK_BOX(hbox), buttn, FALSE, FALSE, 0);
+    combo = gtk_combo_box_new_text();
+    gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Port");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
+//     for (i = 0; i != LENGTH(ports); i++)
+//       gtk_combo_box_append_text(GTK_COMBO_BOX(combo), ports[i]);
+//     for (i = 0; i != LENGTH(ports); i++)
+//       if (strcmp(layouts[i], "Hohner") == 0)
+// 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
+    gtk_box_pack_start(GTK_BOX(hbox), combo, FALSE, FALSE, 0);
 
     // Quit button
 
-    buttn = gtk_button_new_with_label("Quit");
-    gtk_widget_set_size_request(buttn, 55, 31);
-    gtk_box_pack_end(GTK_BOX(hbox), buttn, FALSE, FALSE, 0);
+    quit = gtk_button_new_with_label("Quit");
+    gtk_widget_set_size_request(quit, 55, 31);
+    gtk_box_pack_end(GTK_BOX(hbox), quit, FALSE, FALSE, 0);
 
     // Layout combo box
 
@@ -327,6 +361,21 @@ int main(int argc, char *argv[])
 
     label = gtk_label_new("Layout:");
     gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+
+    // G box
+
+    gbox = gtk_hbox_new(FALSE, SPACE);
+    gtk_box_pack_end(GTK_BOX(hbox), gbox, FALSE, FALSE, SPACE);
+
+    // Volume label
+
+    label = gtk_label_new("Volume:");
+    gtk_box_pack_start(GTK_BOX(gbox), label, FALSE, FALSE, 0);
+
+    // Volume button
+
+    volume = gtk_volume_button_new();
+    gtk_box_pack_start(GTK_BOX(gbox), volume, FALSE, FALSE, 0);
 
     // Frame
 
@@ -351,41 +400,68 @@ int main(int argc, char *argv[])
     // Table
 
     table = gtk_table_new(12, 2, FALSE);
-    gtk_container_set_border_width(GTK_CONTAINER(table), 10);
-    gtk_table_set_row_spacing(GTK_TABLE(table), 0, 10);
-    gtk_table_set_col_spacings(GTK_TABLE(table), 10);
+    gtk_container_set_border_width(GTK_CONTAINER(table), SPACE);
+    gtk_table_set_row_spacing(GTK_TABLE(table), 0, SPACE);
+    gtk_table_set_col_spacings(GTK_TABLE(table), SPACE);
     gtk_container_add(GTK_CONTAINER(frame), table);
 
     // Bass buttons
 #ifdef BASSBUTTONS
     for (i = 0; i != LENGTH(bassdisp); i++)
     {
-	bassdisp[i] = gtk_button_new();
-	gtk_widget_set_size_request(bassdisp[i], 34, 34);
+	bassdisp[i] = gtk_toggle_button_new();
+	gtk_widget_set_size_request(bassdisp[i], SIZE, SIZE);
 	gtk_table_attach_defaults(GTK_TABLE(table),
 				  bassdisp[i], i * 2, i * 2 + 1, 0, 1);
+
+	// Button callback
+
+	g_signal_connect(G_OBJECT(bassdisp[i]), "clicked",
+			 G_CALLBACK(button_clicked),
+			 i == 0? &control: &alt);
     }
 #endif
     // Spacebar
 
-    spacebar = gtk_button_new();
-    gtk_widget_set_size_request(spacebar, 254, 34);
+    spacebar = gtk_toggle_button_new();
+    gtk_widget_set_size_request(spacebar,
+				(SIZE + SPACE) * 5 + SIZE, SIZE);
     gtk_table_attach_defaults(GTK_TABLE(table), spacebar, 3, 9, 0, 1);
+
+    // Button callback
+
+    g_signal_connect(G_OBJECT(spacebar), "clicked",
+		     G_CALLBACK(button_clicked), &bellows);
 
     // Buttons
 
     for (i = 0; i != LENGTH(display); i++)
     {
-	display[i] = gtk_button_new();
-	gtk_widget_set_size_request(display[i], 34, 34);
+	display[i] = gtk_toggle_button_new();
+	gtk_widget_set_size_request(display[i], SIZE, SIZE);
 	gtk_table_attach_defaults(GTK_TABLE(table),
 				  display[i], i, i + 1, 1, 2);
+
+	// Button callback
+
+	g_signal_connect(G_OBJECT(display[i]), "clicked",
+			 G_CALLBACK(button_clicked), &buttons[i]);
     }
+
+    // Key pressed callback
+
+    g_signal_connect(G_OBJECT(window), "key_press_event",
+		     G_CALLBACK(key_press), NULL);
+
+    // Key released callback
+
+    g_signal_connect(G_OBJECT(window), "key_release_event",
+		     G_CALLBACK(key_release), NULL);
 
     // Quit button callback
 
-    g_signal_connect(G_OBJECT(buttn), "clicked", 
-		     G_CALLBACK(quit), window);
+    g_signal_connect(G_OBJECT(quit), "clicked",
+		     G_CALLBACK(quit_clicked), window);
 
     // Destroy window callback
 
@@ -395,6 +471,10 @@ int main(int argc, char *argv[])
     // Show the window
 
     gtk_widget_show_all(window);
+
+    // Grab keyboard focus
+
+    gtk_widget_grab_focus(GTK_WIDGET(window));
 
     // Interact with user
 
@@ -407,7 +487,7 @@ int main(int argc, char *argv[])
 
 // Quit callback
 
-int quit(GtkWidget *widget, GtkWindow *window)
+int quit_clicked(GtkWidget *widget, GtkWindow *window)
 {
     // Create a message dialog
 
@@ -424,4 +504,144 @@ int quit(GtkWidget *widget, GtkWindow *window)
 
     if (result == GTK_RESPONSE_OK)
 	gtk_main_quit();
+}
+
+// Key press event
+
+int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
+{
+    switch (event->keyval)
+    {
+	// Space bar
+
+    case GDK_space:
+	if (!bellows)
+	{
+	    bellows = TRUE;
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar),
+				  TRUE);
+	}
+	break;
+#ifdef BASSBUTTONS
+	// Control key
+
+    case GDK_Control_L:
+	if (!control)
+	{
+	    control = TRUE;
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[BASS]),
+					 TRUE);
+	}
+	break;
+
+	// Alt key
+
+    case GDK_Alt_L:
+	if (!alt)
+	{
+	    alt = TRUE;
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[CHORD]),
+					 TRUE);
+	}
+	break;
+#endif
+	// Function keys
+
+    default:
+	if (event->keyval >= GDK_F1 && event->keyval <= GDK_F12)
+	{
+	    // Get the index
+
+	    int n = reverse? event->keyval - GDK_F1: GDK_F12 - event->keyval;
+	    int m = reverse? GDK_F12 - event->keyval: event->keyval - GDK_F1;
+
+	    // Check the button is pressed
+
+	    if (!buttons[n])
+	    {
+		buttons[n] = TRUE;
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(display[m]),
+					     TRUE);
+	    }
+	}
+    }
+}
+
+// Key release event
+
+int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
+{
+    switch (event->keyval)
+    {
+    case GDK_space:
+	if (bellows)
+	{
+	    bellows = FALSE;
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar), FALSE);
+	}
+	break;
+#ifdef BASSBUTTONS
+	// Control key
+
+    case GDK_Control_L:
+	if (control)
+	{
+	    control = FALSE;
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[BASS]),
+					 FALSE);
+	}
+	break;
+
+	// Alt key
+
+    case GDK_Alt_L:
+	if (alt)
+	{
+	    alt = FALSE;
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[CHORD]),
+					 FALSE);
+	}
+	break;
+#endif
+	// Function keys
+
+    default:
+	if (event->keyval >= GDK_F1 && event->keyval <= GDK_F12)
+	{
+	    // Get the index
+
+	    int n = reverse? event->keyval - GDK_F1: GDK_F12 - event->keyval;
+	    int m = reverse? GDK_F12 - event->keyval: event->keyval - GDK_F1;
+
+	    // Check the button is pressed
+
+	    if (buttons[n])
+	    {
+		buttons[n] = FALSE;
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(display[m]),
+					     FALSE);
+	    }
+	}
+    }
+}
+
+// Reset the toggle button if clicked, currently disabled because of
+// strange interaction with the space bar
+
+int button_clicked(GtkWidget *button, gboolean *pressed)
+{
+//        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button),
+//     				 *pressed);
+}
+
+// Abortive attempt to capture alt-spacebar
+
+int key_snoop(GtkWidget *widget, GdkEventKey *event, gpointer data)
+{
+//     if (event->keyval == GDK_x)
+//     {
+// 	return TRUE;
+//     }
+
+    return FALSE;
 }
