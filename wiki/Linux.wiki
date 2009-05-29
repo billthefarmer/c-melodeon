@@ -21,6 +21,6 @@ There are several things to be done to get this emulator working on any given pl
 
 == Progress ==
 
- * I have created the user interface, with interaction with the tool widgets and the keyboard. I have not found out yet how to stop the alt-spacebar side effect, which pops up the application window menu and spoils the fun. This is potential show stopper.
+ * I have created the user interface, with interaction with the tool widgets and the keyboard. I have not found out yet how to stop the alt-spacebar side effect, which pops up the application window menu and spoils the fun. This is potential show stopper. It appears that it is not possible to stop this unless you get the user to change the keyboard mapping of his window manager. Not very likely. So the linux version will be without bass.
 
  * I have found out how to use ALSA to send midi messages to the sound card. There are conflicting messages out there as to whether current linux kernels need/load a sound bank file into the sound card. To be investigated...
