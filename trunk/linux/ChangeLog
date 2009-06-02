@@ -1,4 +1,13 @@
+02-June-09  Bill Farmer
 
-Updated code, added autoconf and automake scripts. 28-May-09.
+	* Melodeon.c Added signals and signal handler functions. Added
+	midi functions.
 
-Initial version. 24-May-09
+28-May-09  Bill Farmer
+
+	* Melodeon.c Updated code, added autoconf and automake
+	scripts.
+
+24-May-09  Bill Farmer
+
+	* Melodeon.c Initial version.

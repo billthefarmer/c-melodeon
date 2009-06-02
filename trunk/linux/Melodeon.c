@@ -119,6 +119,8 @@ int keyvals[] =
 
 int key;
 
+GtkWidget *key_combo;
+
 // Layouts
 
 static char *layouts[] =
@@ -195,13 +197,30 @@ GtkWidget *spacebar;
 
 gboolean reverse;
 
-// Function declarations
+GtkWidget *reverse_button;
 
+// Volume value
+
+int volume = MAXVOL;
+
+// Midi ports
+
+char **ports;
+
+int port;
+
+// Function declarations
+int instrument_changed(GtkWidget*, gpointer);
+int key_changed(GtkWidget*, gpointer);
+int port_changed(GtkWidget*, gpointer);
+int layout_changed(GtkWidget*, gpointer);
+int reverse_changed(GtkWidget*, gpointer);
+int volume_changed(GtkWidget*, gpointer);
 int quit_clicked(GtkWidget*, GtkWindow*);
 int button_clicked(GtkWidget*, gboolean*);
 int key_press(GtkWidget*, GdkEventKey*, gpointer);
 int key_release(GtkWidget*, GdkEventKey*, gpointer);
-int key_snoop(GtkWidget*, GdkEventKey*, gpointer);
+int short_message(int, int, int);
 
 // Main function
 
@@ -228,11 +247,6 @@ int main(int argc, char *argv[])
     // Initialise GTK
 
     gtk_init(&argc, &argv);
-
-    // This key snooper is an attempt to find out how to defeat the
-    // alt-spacebar window menu which breaks the bass buttons.
-
-    gtk_key_snooper_install(key_snoop, NULL);
 
     // Create main window
 
@@ -292,22 +306,35 @@ int main(int argc, char *argv[])
 
     combo = gtk_combo_box_new_text();
     for (i = 0; i != LENGTH(instruments); i++)
-      gtk_combo_box_append_text(GTK_COMBO_BOX(combo), instruments[i]);
-    for (i = 0; i != LENGTH(instruments); i++)
-      if (strcmp(instruments[i], "Accordion") == 0)
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
+    {
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), instruments[i]);
+	if (strcmp(instruments[i], "Accordion") == 0)
+	    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
+    }
     gtk_box_pack_start(GTK_BOX(hbox), combo, FALSE, FALSE, 0);
+
+    // Instrument changed
+
+    g_signal_connect(G_OBJECT(combo), "changed",
+		     G_CALLBACK(instrument_changed), NULL);
 
     // Key combo box
 
     combo = gtk_combo_box_new_text();
     for (i = 0; i != LENGTH(keys); i++)
-      gtk_combo_box_append_text(GTK_COMBO_BOX(combo), keys[i]);
-    for (i = 0; i != LENGTH(keys); i++)
-      if (strcmp(keys[i], "C") == 0)
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
+    {
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), keys[i]);
+	if (strcmp(keys[i], "C") == 0)
+	    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
+    }
     gtk_widget_set_size_request(combo, 53, 29);
     gtk_box_pack_end(GTK_BOX(hbox), combo, FALSE, FALSE, 1);
+    key_combo = combo;
+
+    // Key changed
+
+    g_signal_connect(G_OBJECT(combo), "changed",
+		     G_CALLBACK(key_changed), NULL);
 
     // Key label
 
@@ -316,8 +343,14 @@ int main(int argc, char *argv[])
 
     // Reverse check button
 
-    reverse = gtk_check_button_new_with_label("Reverse buttons");
+    reverse = gtk_check_button_new_with_mnemonic("_Reverse buttons");
     gtk_box_pack_end(GTK_BOX(hbox), reverse, FALSE, FALSE, 0);
+    reverse_button = reverse;
+
+    // Reverse toggled
+
+    g_signal_connect(G_OBJECT(reverse), "toggled",
+		     G_CALLBACK(reverse_changed), NULL);
 
     // H box
 
@@ -329,7 +362,7 @@ int main(int argc, char *argv[])
     label = gtk_label_new("Port:");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-    // Layout combo box
+    // Port combo box
 
     combo = gtk_combo_box_new_text();
     gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Port");
@@ -341,21 +374,37 @@ int main(int argc, char *argv[])
 // 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
     gtk_box_pack_start(GTK_BOX(hbox), combo, FALSE, FALSE, 0);
 
+    // Port changed
+
+    g_signal_connect(G_OBJECT(combo), "changed",
+		     G_CALLBACK(port_changed), NULL);
+
     // Quit button
 
-    quit = gtk_button_new_with_label("Quit");
+    quit = gtk_button_new_with_mnemonic("_Quit");
     gtk_widget_set_size_request(quit, 55, 31);
     gtk_box_pack_end(GTK_BOX(hbox), quit, FALSE, FALSE, 0);
+
+    // Quit clicked
+
+    g_signal_connect(G_OBJECT(quit), "clicked",
+		     G_CALLBACK(quit_clicked), window);
 
     // Layout combo box
 
     combo = gtk_combo_box_new_text();
     for (i = 0; i != LENGTH(layouts); i++)
-      gtk_combo_box_append_text(GTK_COMBO_BOX(combo), layouts[i]);
-    for (i = 0; i != LENGTH(layouts); i++)
-      if (strcmp(layouts[i], "Hohner") == 0)
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
+    {
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), layouts[i]);
+	if (strcmp(layouts[i], "Hohner") == 0)
+	    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
+    }
     gtk_box_pack_end(GTK_BOX(hbox), combo, FALSE, FALSE, 0);
+
+    // Layout changed
+
+    g_signal_connect(G_OBJECT(combo), "changed",
+		     G_CALLBACK(layout_changed), NULL);
 
     // Layout label
 
@@ -375,7 +424,13 @@ int main(int argc, char *argv[])
     // Volume button
 
     volume = gtk_volume_button_new();
+    gtk_scale_button_set_value(GTK_SCALE_BUTTON(volume), 1.0);
     gtk_box_pack_start(GTK_BOX(gbox), volume, FALSE, FALSE, 0);
+
+    // Volume changed
+
+    g_signal_connect(G_OBJECT(volume), "value-changed",
+		     G_CALLBACK(volume_changed), NULL);
 
     // Frame
 
@@ -458,11 +513,6 @@ int main(int argc, char *argv[])
     g_signal_connect(G_OBJECT(window), "key_release_event",
 		     G_CALLBACK(key_release), NULL);
 
-    // Quit button callback
-
-    g_signal_connect(G_OBJECT(quit), "clicked",
-		     G_CALLBACK(quit_clicked), window);
-
     // Destroy window callback
 
     g_signal_connect(window, "destroy",
@@ -506,6 +556,54 @@ int quit_clicked(GtkWidget *widget, GtkWindow *window)
 	gtk_main_quit();
 }
 
+// Instrument changed
+
+int instrument_changed(GtkWidget *widget, gpointer data)
+{
+    int inst = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+
+    short_message(CHANGE, inst, 0);
+#ifdef BASSBUTTONS
+    short_message(CHANGE + 1, inst, 0);
+    short_message(CHANGE + 2, inst, 0);
+#endif
+}
+
+// Key changed
+
+int key_changed(GtkWidget *widget, gpointer data)
+{
+    key = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+}
+
+// Port changed
+
+int port_changed(GtkWidget *widget, gpointer data)
+{
+    port = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+}
+
+// Layout changed
+
+int layout_changed(GtkWidget *widget, gpointer data)
+{
+    layout = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+}
+
+// Reverse changed
+
+int reverse_changed(GtkWidget *widget, gpointer data)
+{
+    reverse = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+
+// Volume changed
+
+int volume_changed(GtkWidget *widget, gpointer data)
+{
+    volume = gtk_scale_button_get_value(GTK_SCALE_BUTTON(widget)) * MAXVOL;
+}
+
 // Key press event
 
 int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
@@ -517,9 +615,38 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
     case GDK_space:
 	if (!bellows)
 	{
+	    int i;
+
+	    // If there's a change of direction, reset the channel,
+	    // and play all the notes for buttons that are pressed
+
 	    bellows = TRUE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar),
-				  TRUE);
+					 TRUE);
+	    midi_reset();
+#ifdef BASSBUTTONS
+	    if (control)
+	    {
+		int note = bass[key][bellows];
+		short_message(BASSON, note, volume);
+	    }
+
+	    if (alt)
+	    {
+		int note = chord[key][0][bellows];
+		short_message(CHRDON, note, volume);
+		note = chord[key][1][bellows];
+		short_message(CHRDON + 1, note, volume);
+	    }
+#endif
+	    for (i = 0; i != LENGTH(buttons); i++)
+	    {
+		if (buttons[i])
+		{
+		    int note = notes[layout][i][bellows] + keyvals[key];
+		    short_message(NOTEON, note, volume);
+		}
+	    }
 	}
 	break;
 #ifdef BASSBUTTONS
@@ -531,6 +658,8 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
 	    control = TRUE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[BASS]),
 					 TRUE);
+	    int note = bass[key][bellows];
+	    short_message(BASSON, note, volume);
 	}
 	break;
 
@@ -542,6 +671,10 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
 	    alt = TRUE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[CHORD]),
 					 TRUE);
+	    int note = chord[key][0][bellows];
+	    short_message(CHRDON, note, volume);
+	    note = chord[key][1][bellows];
+	    short_message(CHRDON, note, volume);
 	}
 	break;
 #endif
@@ -562,6 +695,8 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
 		buttons[n] = TRUE;
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(display[m]),
 					     TRUE);
+		int note = notes[layout][n][bellows] + keyvals[key];
+		short_message(NOTEON, note, volume);
 	    }
 	}
     }
@@ -571,15 +706,97 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
 
 int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 {
+    int i;
+    char *s = "";
+
     switch (event->keyval)
     {
     case GDK_space:
 	if (bellows)
 	{
+
+	    int i;
+
+	    // If there's a change of direction, reset the channel,
+	    // and play all the notes for buttons that are pressed
+
 	    bellows = FALSE;
-	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar), FALSE);
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar),
+					 FALSE);
+	    midi_reset();
+#ifdef BASSBUTTONS
+	    if (control)
+	    {
+		int note = bass[key][bellows];
+		short_message(BASSON, note, volume);
+	    }
+
+	    if (alt)
+	    {
+		int note = chord[key][0][bellows];
+		short_message(CHRDON, note, volume);
+		note = chord[key][1][bellows];
+		short_message(CHRDON, note, volume);
+	    }
+#endif
+	    for (i = 0; i != LENGTH(buttons); i++)
+	    {
+		if (buttons[i])
+		{
+		    int note = notes[layout][i][bellows] + keyvals[key];
+		    short_message(NOTEON, note, volume);
+		}
+	    }
 	}
+	return;
+
+    case GDK_r:
+    case GDK_R:
+	reverse = !reverse;
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(reverse_button),
+				     reverse);
+	return;
+
+    case GDK_q:
+    case GDK_Q:
+	quit_clicked(NULL, GTK_WINDOW(window));
+	return;
+
+    case GDK_e:
+    case GDK_E:
+	s = "Eb";
 	break;
+
+    case GDK_b:
+    case GDK_B:
+	s = "Bb";
+	break;
+
+    case GDK_f:
+    case GDK_F:
+	s = "F";
+	break;
+
+    case GDK_c:
+    case GDK_C:
+	s = "C";
+	break;
+
+    case GDK_g:
+    case GDK_G:
+	s = "G";
+	break;
+
+    case GDK_d:
+    case GDK_D:
+	s = "D";
+	break;
+
+    case GDK_a:
+    case GDK_A:
+	s = "A";
+	break;
+
 #ifdef BASSBUTTONS
 	// Control key
 
@@ -589,8 +806,10 @@ int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 	    control = FALSE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[BASS]),
 					 FALSE);
+	    int note = bass[key][bellows];
+	    short_message(BASSOFF, note, 0);
 	}
-	break;
+	return;
 
 	// Alt key
 
@@ -600,8 +819,12 @@ int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 	    alt = FALSE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[CHORD]),
 					 FALSE);
+	    int note = chord[key][0][bellows];
+	    short_message(CHRDOFF, note, 0);
+	    note = chord[key][1][bellows];
+	    short_message(CHRDOFF, note, 0);
 	}
-	break;
+	return;
 #endif
 	// Function keys
 
@@ -620,9 +843,28 @@ int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 		buttons[n] = FALSE;
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(display[m]),
 					     FALSE);
+		int note = notes[layout][n][bellows] + keyvals[key];
+		short_message(NOTEOFF, note, 0);
 	    }
 	}
+	return;
     }
+
+    for (i = 0; i != LENGTH(keys); i++)
+	if (strcmp(s, keys[i]) == 0)
+	    gtk_combo_box_set_active(GTK_COMBO_BOX(key_combo), i);
+}
+
+// Midi reset
+
+int midi_reset()
+{
+}
+
+// Send a short midi message
+
+int short_message(int s, int n, int v)
+{
 }
 
 // Reset the toggle button if clicked, currently disabled because of
@@ -632,16 +874,4 @@ int button_clicked(GtkWidget *button, gboolean *pressed)
 {
 //        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button),
 //     				 *pressed);
-}
-
-// Abortive attempt to capture alt-spacebar
-
-int key_snoop(GtkWidget *widget, GdkEventKey *event, gpointer data)
-{
-//     if (event->keyval == GDK_x)
-//     {
-// 	return TRUE;
-//     }
-
-    return FALSE;
 }
