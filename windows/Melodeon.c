@@ -287,8 +287,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
 		     CW_USEDEFAULT, // default vertical position
 		     CW_USEDEFAULT, // default width
 		     CW_USEDEFAULT, // default height
-		     (HWND)NULL,    // no owner window
-		     (HMENU)NULL,   // use class menu
+		     NULL,          // no owner window
+		     NULL,          // use class menu
 		     hinst,         // handle to application instance
 		     NULL);         // no window-creation data
 
@@ -365,7 +365,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Calculate desired window width and height
 
 	int border = (rwnd.right - rwnd.left) - rclt.right;
-	int width = 550 + border;
+	int width  = 560 + border;
 	int height = width * 3 / 4;
 
 	// Set new dimensions
@@ -381,7 +381,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	stat =
 	    CreateWindow(STATUSCLASSNAME, // Predefined class.
-			 " Press the function keys F1-F12 as"
+			 "\tPress the function keys F1-F12 as"
 			 " melodeon buttons and the space bar"
 			 " as the bellows. 4th button"
 			 " start.",   // Text.
@@ -401,7 +401,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 BS_GROUPBOX, // Styles.
 			 10,          // x position.
 			 2,           // y position.
-			 530,         // width.
+			 540,         // width.
 			 86,          // height.
 			 hWnd,        // Parent window.
 			 NULL,        // No id.
@@ -458,7 +458,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 "Reverse buttons:", // Text.
 			 WS_VISIBLE | WS_CHILD | BS_LEFTTEXT |
 			 BS_CHECKBOX, // Styles.
-			 280,         // x position.
+			 282,         // x position.
 			 20,          // y position.
 			 130,         // width.
 			 24,          // height.
@@ -474,7 +474,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 "Key:",      // Text.
 			 WS_VISIBLE | WS_CHILD |
 			 SS_LEFT,     // Styles.
-			 420,         // x position.
+			 429,         // x position.
 			 24,          // y position.
 			 76,          // width.
 			 20,          // height.
@@ -490,7 +490,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
 			 CBS_DROPDOWNLIST, // Styles.
-			 458,         // x position.
+			 467,         // x position.
 			 20,          // y position.
 			 72,          // width.
 			 24,          // height.
@@ -540,16 +540,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 hinst,        // instance owning this window
 			 NULL);        // pointer not needed
 
-	SetScrollRange(hvol,
-		       SB_CTL,
-		       0,
-		       MAXVOL,
-		       FALSE);
+	SetScrollRange(hvol, SB_CTL, 0, MAXVOL, FALSE);
 
-	SetScrollPos(hvol,
-		     SB_CTL,
-		     volume,
-		     FALSE);
+	SetScrollPos(hvol, SB_CTL, volume, FALSE);
 
 	// Create text
 
@@ -558,7 +551,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 "Layout:",   // Text.
 			 WS_VISIBLE | WS_CHILD |
 			 SS_LEFT,     // Styles.
-			 280,         // x position.
+			 282,         // x position.
 			 58,          // y position.
 			 54,          // width.
 			 20,          // height.
@@ -574,7 +567,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
 			 CBS_DROPDOWNLIST, // Styles.
-			 337,         // x position.
+			 347,         // x position.
 			 54,          // y position.
 			 110,         // width.
 			 24,          // height.
@@ -599,7 +592,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 "Quit",     // Text.
 			 WS_VISIBLE | WS_CHILD |
 			 BS_PUSHBUTTON, // Styles.
-			 457,         // x position.
+			 466,         // x position.
 			 53,          // y position.
 			 74,          // width.
 			 26,          // height.
@@ -617,8 +610,8 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 BS_GROUPBOX, // Styles.
 			 10,          // x position.
 			 90,          // y position.
-			 530,         // width.
-			 152,         // height.
+			 540,         // width.
+			 162,         // height.
 			 hWnd,        // Parent window.
 			 NULL,        // No id.
 			 hinst,       // handle to application instance
@@ -633,8 +626,8 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 WS_VISIBLE | WS_CHILD |
 			 SS_CENTER,   // Styles.
 			 20,          // x position.
-			 144,         // y position.
-			 510,         // width.
+			 149,         // y position.
+			 520,         // width.
 			 52,          // height.
 			 hWnd,        // Parent window.
 			 (HMENU)TXTS, // Id.
@@ -662,7 +655,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 BS_GROUPBOX, // Styles.
 			 10,          // x position.
 			 bottom - 118, // y position.
-			 530,         // width.
+			 540,         // width.
 			 108,         // height.
 			 hWnd,        // Parent window.
 			 NULL,        // No id.
@@ -676,9 +669,9 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			 NULL,        // No text.
 			 WS_VISIBLE | WS_CHILD |
 			 BS_PUSHBUTTON, // Styles.
-			 150,         // x position.
-			 bottom - 98,  // y position.
-			 249,         // width.
+			 153,         // x position.
+			 bottom - 98, // y position.
+			 254,         // width.
 			 SIZE,        // height.
 			 hWnd,        // Parent window.
 			 (HMENU)BTNS, // Id.
@@ -694,7 +687,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			     NULL,       // No text.
 			     WS_VISIBLE | WS_CHILD |
 			     BS_PUSHBUTTON, // Styles.
-			     21 + 86 * i, // x position.
+			     21 + 88 * i, // x position.
 			     bottom - 98, // y position.
 			     SIZE,        // width.
 			     SIZE,        // height.
@@ -713,7 +706,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			     NULL,       // No text.
 			     WS_VISIBLE | WS_CHILD |
 			     BS_PUSHBUTTON, // Styles.
-			     21 + 43 * i, // x position.
+			     21 + 44 * i, // x position.
 			     bottom - 54, // y position.
 			     SIZE,        // width.
 			     SIZE,        // height.
@@ -746,12 +739,13 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
     case WM_CTLCOLORSTATIC:
 	break;
 
-	// Disable menus
+	// Disable menus by capturing this message
 
     case WM_INITMENU:
 	break;
 
-	// Capture system character key to stop pop up menus
+	// Capture system character key to stop pop up menus and other
+	// nonsense
 
     case WM_SYSCHAR:
 	break;
@@ -1042,8 +1036,10 @@ UINT ChangeInstrument(HWND hinst)
 {
     int inst = SendMessage(hinst, CB_GETCURSEL, 0, 0);
     ShortMessage(CHANGE, inst, 0);
+#ifdef BASSBUTTONS
     ShortMessage(CHANGE + 1, inst, 0);
     ShortMessage(CHANGE + 2, inst, 0);
+#endif
 }
 
 // Reverse buttons
@@ -1164,9 +1160,9 @@ UINT KeyDown(WPARAM w, LPARAM l)
 	{
 	    menu = TRUE;
 	    SendMessage(bassdisp[CHORD], BM_SETSTATE, TRUE, 0);
-	    int note = chord[key][BASS][bellows];
+	    int note = chord[key][0][bellows];
 	    ShortMessage(CHRDON, note, volume);
-	    note = chord[key][CHORD][bellows];
+	    note = chord[key][1][bellows];
 	    ShortMessage(CHRDON, note, volume);
 	}
     }
@@ -1322,5 +1318,5 @@ UINT ShortMessage(BYTE s, BYTE n, BYTE v)
     smsg.b[2] = v;
     smsg.b[3] = 0;
 
-    return midiOutShortMsg(hmdo, smsg.dw);
+    midiOutShortMsg(hmdo, smsg.dw);
 }
