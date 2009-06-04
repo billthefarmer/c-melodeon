@@ -9,4 +9,6 @@ http://melodeon.googlecode.com/files/Photo_editor.png
 
 == Comments ==
 
-There is a very nice tool bundled with earlier versions of Microsoft Office, which enables you to take screen shots of new applications, zoom in on them, and use the selection tool to measure how your widgets line up. All the dimensions are in the status line in units of your choice. I haven't found a similar tool for linux. But then Gtk lines them up for you, but you might want to do a bit of adjustment.
+ * There is a very nice tool bundled with earlier versions of Microsoft Office, which enables you to take screen shots of new applications, zoom in on them, and use the selection tool to measure how your widgets line up. All the dimensions are in the status line in units of your choice. I haven't found a similar tool for linux. But then Gtk lines them up for you, but you might want to do a bit of adjustment.
+
+ * I have changed the volume control for a slider, which it should have been to start with. My excuse is that the slider is called a trackbar. I have also changed the background colour.
