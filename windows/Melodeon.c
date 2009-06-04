@@ -132,6 +132,8 @@ int keyvals[] =
 
 UINT key;
 
+HWND hkey;
+
 // Layouts
 
 char *layouts[] =
@@ -202,6 +204,8 @@ BOOL bellows;
 
 BOOL reverse;
 
+HWND hrev;
+
 // Volume value
 
 UINT volume = MAXVOL;
@@ -223,6 +227,7 @@ UINT ReverseButtons(HWND);
 UINT ChangeLayout(HWND);
 UINT ChangeKey(HWND);
 UINT ChangeVolume(WPARAM, LPARAM);
+UINT CharPressed(WPARAM, LPARAM);
 UINT KeyDown(WPARAM, LPARAM);
 UINT KeyUp(WPARAM, LPARAM);
 UINT ShortMessage(BYTE, BYTE, BYTE);
@@ -261,7 +266,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	    LoadCursor(NULL,
 		       IDC_ARROW);        // predefined arrow
 	wc.hbrBackground =
-	    GetStockObject(WHITE_BRUSH);  // white background brush
+	    GetSysColorBrush(COLOR_3DFACE);
+// 	    GetStockObject(WHITE_BRUSH);  // white background brush
 	wc.lpszMenuName =  "MainMenu";    // name of menu resource
 	wc.lpszClassName = "MainWClass";  // name of window class
 
@@ -332,10 +338,8 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
     static HWND hgrp;
     static HWND inst;
-    static HWND hkey;
     static HWND hlay;
     static HWND hvol;
-    static HWND hrev;
     static HWND quit;
     static HWND text;
     static HWND stat;
@@ -527,22 +531,21 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Create volume control
 
 	hvol =
-	    CreateWindow(WC_SCROLLBAR, // scroll bar control class
-			 NULL,         // no text
+	    CreateWindow(TRACKBAR_CLASS, // track bar control class
+			 NULL,        // no text
 			 WS_VISIBLE | WS_CHILD |
-			 SBS_HORZ,     // scroll bar styles
-			 102,          // horizontal position
-			 59,           // vertical position
-			 168,          // width of the scroll bar
-			 16,           // height of the scroll bar
-			 hWnd,         // handle to main window
-			 (HMENU)VOLM,  // id
-			 hinst,        // instance owning this window
-			 NULL);        // pointer not needed
+			 TBS_HORZ,    // track bar styles
+			 102,         // horizontal position
+			 54,          // vertical position
+			 168,         // width of the track bar
+			 24,          // height of the track bar
+			 hWnd,        // handle to main window
+			 (HMENU)VOLM, // id
+			 hinst,       // instance owning this window
+			 NULL);       // pointer not needed
 
-	SetScrollRange(hvol, SB_CTL, 0, MAXVOL, FALSE);
-
-	SetScrollPos(hvol, SB_CTL, volume, FALSE);
+	SendMessage(hvol, TBM_SETRANGE, TRUE, MAKELONG(0, MAXVOL));
+	SendMessage(hvol, TBM_SETPOS, TRUE, volume);
 
 	// Create text
 
@@ -734,10 +737,10 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	break;
 
 	// Colour static text, defeat DefWindowProc() by capturing
-	// this message
+	// this message. Changed background colour instead.
 
-    case WM_CTLCOLORSTATIC:
-	break;
+//     case WM_CTLCOLORSTATIC:
+// 	break;
 
 	// Disable menus by capturing this message
 
@@ -753,62 +756,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	// Character key pressed
 
     case WM_CHAR:
-	switch (wParam)
-	{
-	    // Change key
-
-	case 'E':
-	case 'e':
-	    s = "Eb";
-	    break;
-
-	case 'B':
-	case 'b':
-	    s = "Bb";
-	    break;
-
-	case 'F':
-	case 'f':
-	    s = "F";
-	    break;
-
-	case 'C':
-	case 'c':
-	    s = "C";
-	    break;
-
-	case 'G':
-	case 'g':
-	    s = "G";
-	    break;
-
-	case 'D':
-	case 'd':
-	    s = "D";
-	    break;
-
-	case 'A':
-	case 'a':
-	    s = "A";
-	    break;
-
-	    // Reverse buttons
-
-	case 'R':
-	case 'r':
-	    ReverseButtons(hrev);
-	    return 0;
-
-	    // Anything else
-
-	default:
-	    return 0;
-	}
-
-	// Change key
-
-	SendMessage(hkey, CB_SELECTSTRING, -1, (LPARAM)s);
-	ChangeKey(hkey);
+	CharPressed(wParam, lParam);
 	break;
 
 	// F10 key generates a WM_SYSKEYDOWN message
@@ -1100,10 +1048,7 @@ UINT ChangeVolume(WPARAM wParam, LPARAM lParam)
 
 	// Set the new position
 
-	SetScrollPos((HWND)lParam,
-		     SB_CTL,
-		     volume,
-		     TRUE);
+	SendMessage((HWND)lParam, TBM_SETPOS, TRUE, volume);
 }
 
 // Change layout
@@ -1111,6 +1056,70 @@ UINT ChangeVolume(WPARAM wParam, LPARAM lParam)
 UINT ChangeLayout(HWND hlay)
 {
     layout = SendMessage(hlay, CB_GETCURSEL, 0, 0);
+}
+
+// Char pressed
+
+UINT CharPressed(WPARAM w, LPARAM l)
+{
+    char *s;
+
+    switch (w)
+    {
+	// Change key
+
+    case 'E':
+    case 'e':
+	s = "Eb";
+	break;
+
+    case 'B':
+    case 'b':
+	s = "Bb";
+	break;
+
+    case 'F':
+    case 'f':
+	s = "F";
+	break;
+
+    case 'C':
+    case 'c':
+	s = "C";
+	break;
+
+    case 'G':
+    case 'g':
+	s = "G";
+	break;
+
+    case 'D':
+    case 'd':
+	s = "D";
+	break;
+
+    case 'A':
+    case 'a':
+	s = "A";
+	break;
+
+	// Reverse buttons
+
+    case 'R':
+    case 'r':
+	ReverseButtons(hrev);
+	return;
+
+	// Anything else
+
+    default:
+	return;
+    }
+
+    // Change key
+
+    SendMessage(hkey, CB_SELECTSTRING, -1, (LPARAM)s);
+    ChangeKey(hkey);
 }
 
 // Key pressed
