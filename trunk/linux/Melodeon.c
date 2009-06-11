@@ -24,20 +24,17 @@
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
+#include <fluidsynth.h>
 
 // Macros
 
 #define LENGTH(a) (sizeof(a) / sizeof(a[0]))
 
-// Midi codes
+// Midi channels
 
-#define NOTEOFF 0x80
-#define BASSOFF 0x81
-#define CHRDOFF 0x82
-#define NOTEON  0x90
-#define BASSON  0x91
-#define CHRDON  0x92
-#define CHANGE  0xc0
+#define NOTE_CHANNEL 0
+#define BASS_CHANNEL 1
+#define CHRD_CHANNEL 2
 
 // Offsets
 
@@ -62,7 +59,11 @@
 
 // Space
 
-#define SPACE 10
+#define MARGIN 10
+
+// Sount font file
+
+#define SOUND_FONT_FILE "8MBGMSFX.SF2"
 
 // List of midi instruments
 
@@ -210,17 +211,15 @@ char **ports;
 int port;
 
 // Function declarations
-int instrument_changed(GtkWidget*, gpointer);
-int key_changed(GtkWidget*, gpointer);
-int port_changed(GtkWidget*, gpointer);
-int layout_changed(GtkWidget*, gpointer);
-int reverse_changed(GtkWidget*, gpointer);
-int volume_changed(GtkWidget*, gpointer);
+int instrument_changed(GtkWidget*, fluid_synth_t*);
+int key_changed(GtkWidget*, GtkWindow*);
+int layout_changed(GtkWidget*, GtkWindow*);
+int reverse_changed(GtkWidget*, GtkWindow*);
+int volume_changed(GtkWidget*, GtkWindow*);
 int quit_clicked(GtkWidget*, GtkWindow*);
 int button_clicked(GtkWidget*, gboolean*);
-int key_press(GtkWidget*, GdkEventKey*, gpointer);
-int key_release(GtkWidget*, GdkEventKey*, gpointer);
-int short_message(int, int, int);
+int key_press(GtkWidget*, GdkEventKey*, fluid_synth_t*);
+int key_release(GtkWidget*, GdkEventKey*, fluid_synth_t*);
 
 // Main function
 
@@ -242,7 +241,26 @@ int main(int argc, char *argv[])
     GtkWidget *reverse;
     GtkWidget *separator;
 
+    // Fluidsynth
+
+    fluid_synth_t *synth;
+    fluid_settings_t *settings;
+    fluid_audio_driver_t *adriver;
+
+    int id;
     int i;
+
+    // Create fluidsynth settings
+
+    settings = new_fluid_settings();
+
+    // Create synthesizer
+
+    synth = new_fluid_synth(settings);
+
+    // Load soundfont
+
+    id = fluid_synth_sfload(synth, SOUND_FONT_FILE, 0);
 
     // Initialise GTK
 
@@ -277,8 +295,8 @@ int main(int argc, char *argv[])
 
     // V box, this contains three frames
 
-    vbox = gtk_vbox_new(FALSE, SPACE);
-    gtk_container_set_border_width(GTK_CONTAINER(vbox), SPACE);
+    vbox = gtk_vbox_new(FALSE, MARGIN);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), MARGIN);
     gtk_box_pack_start(GTK_BOX(wbox), vbox, FALSE, FALSE, 0);
 
     // Frame, this contains all the tool widgets
@@ -288,13 +306,13 @@ int main(int argc, char *argv[])
 
     // W Box
 
-    wbox = gtk_vbox_new(FALSE, SPACE);
-    gtk_container_set_border_width(GTK_CONTAINER(wbox), SPACE);
+    wbox = gtk_vbox_new(FALSE, MARGIN);
+    gtk_container_set_border_width(GTK_CONTAINER(wbox), MARGIN);
     gtk_container_add(GTK_CONTAINER(frame), wbox);
 
     // H box
 
-    hbox = gtk_hbox_new(FALSE, SPACE);
+    hbox = gtk_hbox_new(FALSE, MARGIN);
     gtk_box_pack_start(GTK_BOX(wbox), hbox, FALSE, FALSE, 0);
 
     // Instrument label
@@ -305,18 +323,20 @@ int main(int argc, char *argv[])
     // Instrument combo box
 
     combo = gtk_combo_box_new_text();
+
     for (i = 0; i != LENGTH(instruments); i++)
     {
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), instruments[i]);
 	if (strcmp(instruments[i], "Accordion") == 0)
 	    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
     }
+
     gtk_box_pack_start(GTK_BOX(hbox), combo, FALSE, FALSE, 0);
 
     // Instrument changed
 
     g_signal_connect(G_OBJECT(combo), "changed",
-		     G_CALLBACK(instrument_changed), NULL);
+		     G_CALLBACK(instrument_changed), synth);
 
     // Key combo box
 
@@ -334,7 +354,7 @@ int main(int argc, char *argv[])
     // Key changed
 
     g_signal_connect(G_OBJECT(combo), "changed",
-		     G_CALLBACK(key_changed), NULL);
+		     G_CALLBACK(key_changed), window);
 
     // Key label
 
@@ -350,34 +370,12 @@ int main(int argc, char *argv[])
     // Reverse toggled
 
     g_signal_connect(G_OBJECT(reverse), "toggled",
-		     G_CALLBACK(reverse_changed), NULL);
+		     G_CALLBACK(reverse_changed), window);
 
     // H box
 
-    hbox = gtk_hbox_new(FALSE, SPACE);
+    hbox = gtk_hbox_new(FALSE, MARGIN);
     gtk_box_pack_start(GTK_BOX(wbox), hbox, FALSE, FALSE, 0);
-
-    // Port label
-
-    label = gtk_label_new("Port:");
-    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-
-    // Port combo box
-
-    combo = gtk_combo_box_new_text();
-    gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Port");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
-//     for (i = 0; i != LENGTH(ports); i++)
-//       gtk_combo_box_append_text(GTK_COMBO_BOX(combo), ports[i]);
-//     for (i = 0; i != LENGTH(ports); i++)
-//       if (strcmp(layouts[i], "Hohner") == 0)
-// 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), i);
-    gtk_box_pack_start(GTK_BOX(hbox), combo, FALSE, FALSE, 0);
-
-    // Port changed
-
-    g_signal_connect(G_OBJECT(combo), "changed",
-		     G_CALLBACK(port_changed), NULL);
 
     // Quit button
 
@@ -404,7 +402,7 @@ int main(int argc, char *argv[])
     // Layout changed
 
     g_signal_connect(G_OBJECT(combo), "changed",
-		     G_CALLBACK(layout_changed), NULL);
+		     G_CALLBACK(layout_changed), window);
 
     // Layout label
 
@@ -413,8 +411,8 @@ int main(int argc, char *argv[])
 
     // G box
 
-    gbox = gtk_hbox_new(FALSE, SPACE);
-    gtk_box_pack_end(GTK_BOX(hbox), gbox, FALSE, FALSE, SPACE);
+    gbox = gtk_hbox_new(FALSE, MARGIN);
+    gtk_box_pack_end(GTK_BOX(hbox), gbox, FALSE, FALSE, MARGIN);
 
     // Volume label
 
@@ -430,7 +428,7 @@ int main(int argc, char *argv[])
     // Volume changed
 
     g_signal_connect(G_OBJECT(volume), "value-changed",
-		     G_CALLBACK(volume_changed), NULL);
+		     G_CALLBACK(volume_changed), window);
 
     // Frame
 
@@ -455,9 +453,9 @@ int main(int argc, char *argv[])
     // Table
 
     table = gtk_table_new(12, 2, FALSE);
-    gtk_container_set_border_width(GTK_CONTAINER(table), SPACE);
-    gtk_table_set_row_spacing(GTK_TABLE(table), 0, SPACE);
-    gtk_table_set_col_spacings(GTK_TABLE(table), SPACE);
+    gtk_container_set_border_width(GTK_CONTAINER(table), MARGIN);
+    gtk_table_set_row_spacing(GTK_TABLE(table), 0, MARGIN);
+    gtk_table_set_col_spacings(GTK_TABLE(table), MARGIN);
     gtk_container_add(GTK_CONTAINER(frame), table);
 
     // Bass buttons
@@ -480,7 +478,7 @@ int main(int argc, char *argv[])
 
     spacebar = gtk_toggle_button_new();
     gtk_widget_set_size_request(spacebar,
-				(SIZE + SPACE) * 5 + SIZE, SIZE);
+				(SIZE + MARGIN) * 5 + SIZE, SIZE);
     gtk_table_attach_defaults(GTK_TABLE(table), spacebar, 3, 9, 0, 1);
 
     // Button callback
@@ -506,12 +504,12 @@ int main(int argc, char *argv[])
     // Key pressed callback
 
     g_signal_connect(G_OBJECT(window), "key_press_event",
-		     G_CALLBACK(key_press), NULL);
+		     G_CALLBACK(key_press), synth);
 
     // Key released callback
 
     g_signal_connect(G_OBJECT(window), "key_release_event",
-		     G_CALLBACK(key_release), NULL);
+		     G_CALLBACK(key_release), synth);
 
     // Destroy window callback
 
@@ -522,9 +520,9 @@ int main(int argc, char *argv[])
 
     gtk_widget_show_all(window);
 
-    // Grab keyboard focus
+    // Set focus to the window
 
-    gtk_widget_grab_focus(GTK_WIDGET(window));
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
 
     // Interact with user
 
@@ -558,55 +556,57 @@ int quit_clicked(GtkWidget *widget, GtkWindow *window)
 
 // Instrument changed
 
-int instrument_changed(GtkWidget *widget, gpointer data)
+int instrument_changed(GtkWidget *widget, fluid_synth_t *synth)
 {
     int inst = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+    fluid_sfont_t *sfont = fluid_synth_get_sfont(synth, 0);
+    int id = sfont->id;
 
-    short_message(CHANGE, inst, 0);
+    fluid_synth_program_select(synth, 0, id, 0, inst); 
+
 #ifdef BASSBUTTONS
-    short_message(CHANGE + 1, inst, 0);
-    short_message(CHANGE + 2, inst, 0);
+
+    fluid_synth_program_select(synth, 1, id, 0, inst);
+    fluid_synth_program_select(synth, 2, id, 0, inst);
+
 #endif
 }
 
 // Key changed
 
-int key_changed(GtkWidget *widget, gpointer data)
+int key_changed(GtkWidget *widget, GtkWindow *window)
 {
     key = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-}
-
-// Port changed
-
-int port_changed(GtkWidget *widget, gpointer data)
-{
-    port = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
 
 // Layout changed
 
-int layout_changed(GtkWidget *widget, gpointer data)
+int layout_changed(GtkWidget *widget, GtkWindow *window)
 {
     layout = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
 
 // Reverse changed
 
-int reverse_changed(GtkWidget *widget, gpointer data)
+int reverse_changed(GtkWidget *widget, GtkWindow *window)
 {
     reverse = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
 
 // Volume changed
 
-int volume_changed(GtkWidget *widget, gpointer data)
+int volume_changed(GtkWidget *widget, GtkWindow *window)
 {
     volume = gtk_scale_button_get_value(GTK_SCALE_BUTTON(widget)) * MAXVOL;
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
 
 // Key press event
 
-int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
+int key_press(GtkWidget *window, GdkEventKey *event, fluid_synth_t *synth)
 {
     switch (event->keyval)
     {
@@ -617,34 +617,41 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
 	{
 	    int i;
 
-	    // If there's a change of direction, reset the channel,
-	    // and play all the notes for buttons that are pressed
+	    // If there's a change of direction, stop and play all the
+	    // notes for buttons that are pressed
 
 	    bellows = TRUE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar),
 					 TRUE);
-	    midi_reset();
 #ifdef BASSBUTTONS
 	    if (control)
 	    {
-		int note = bass[key][bellows];
-		short_message(BASSON, note, volume);
+		int note = bass[key][!bellows];
+		fluid_synth_noteoff(synth, BASS_CHANNEL, note);
+		note = bass[key][bellows];
+		fluid_synth_noteon(synth, BASS_CHANNEL, note, volume);
 	    }
 
 	    if (alt)
 	    {
-		int note = chord[key][0][bellows];
-		short_message(CHRDON, note, volume);
+		int note = chord[key][0][!bellows];
+		fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
+		note = chord[key][1][!bellows];
+		fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
+		note = chord[key][0][bellows];
+		fluid_synth_noteon(synth, CHRD_CHANNEL, note, volume);
 		note = chord[key][1][bellows];
-		short_message(CHRDON + 1, note, volume);
+		fluid_synth_noteon(synth, CHRD_CHANNEL, note, volume);
 	    }
 #endif
 	    for (i = 0; i != LENGTH(buttons); i++)
 	    {
 		if (buttons[i])
 		{
-		    int note = notes[layout][i][bellows] + keyvals[key];
-		    short_message(NOTEON, note, volume);
+		    int note = notes[layout][i][!bellows] + keyvals[key];
+		    fluid_synth_noteoff(synth, NOTE_CHANNEL, note);
+		    note = notes[layout][i][bellows] + keyvals[key];
+		    fluid_synth_noteon(synth, NOTE_CHANNEL, note, volume);
 		}
 	    }
 	}
@@ -653,28 +660,30 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
 	// Control key
 
     case GDK_Control_L:
+    case GDK_Control_R:
 	if (!control)
 	{
 	    control = TRUE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[BASS]),
 					 TRUE);
 	    int note = bass[key][bellows];
-	    short_message(BASSON, note, volume);
+	    fluid_synth_noteon(synth, BASS_CHANNEL, note, volume);
 	}
 	break;
 
 	// Alt key
 
     case GDK_Alt_L:
+    case GDK_Alt_R:
 	if (!alt)
 	{
 	    alt = TRUE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[CHORD]),
 					 TRUE);
 	    int note = chord[key][0][bellows];
-	    short_message(CHRDON, note, volume);
+	    fluid_synth_noteon(synth, CHRD_CHANNEL, note, volume);
 	    note = chord[key][1][bellows];
-	    short_message(CHRDON, note, volume);
+	    fluid_synth_noteon(synth, CHRD_CHANNEL, note, volume);
 	}
 	break;
 #endif
@@ -696,15 +705,17 @@ int key_press(GtkWidget *window, GdkEventKey *event, gpointer data)
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(display[m]),
 					     TRUE);
 		int note = notes[layout][n][bellows] + keyvals[key];
-		short_message(NOTEON, note, volume);
+		fluid_synth_noteon(synth, NOTE_CHANNEL, note, volume);
 	    }
 	}
     }
+
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
 
 // Key release event
 
-int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
+int key_release(GtkWidget *window, GdkEventKey *event, fluid_synth_t *synth)
 {
     int i;
     char *s = "";
@@ -717,34 +728,41 @@ int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 
 	    int i;
 
-	    // If there's a change of direction, reset the channel,
-	    // and play all the notes for buttons that are pressed
+	    // If there's a change of direction, stop and play all the
+	    // notes for buttons that are pressed
 
 	    bellows = FALSE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar),
 					 FALSE);
-	    midi_reset();
 #ifdef BASSBUTTONS
 	    if (control)
 	    {
-		int note = bass[key][bellows];
-		short_message(BASSON, note, volume);
+		int note = bass[key][!bellows];
+		fluid_synth_noteoff(synth, BASS_CHANNEL, note);
+		note = bass[key][bellows];
+		fluid_synth_noteon(synth, BASS_CHANNEL, note, volume);
 	    }
 
 	    if (alt)
 	    {
-		int note = chord[key][0][bellows];
-		short_message(CHRDON, note, volume);
+		int note = chord[key][0][!bellows];
+		fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
+		note = chord[key][1][!bellows];
+		fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
+		note = chord[key][0][bellows];
+		fluid_synth_noteon(synth, CHRD_CHANNEL, note, volume);
 		note = chord[key][1][bellows];
-		short_message(CHRDON, note, volume);
+		fluid_synth_noteon(synth, CHRD_CHANNEL, note, volume);
 	    }
 #endif
 	    for (i = 0; i != LENGTH(buttons); i++)
 	    {
 		if (buttons[i])
 		{
-		    int note = notes[layout][i][bellows] + keyvals[key];
-		    short_message(NOTEON, note, volume);
+		    int note = notes[layout][i][!bellows] + keyvals[key];
+		    fluid_synth_noteoff(synth, NOTE_CHANNEL, note);
+		    note = notes[layout][i][bellows] + keyvals[key];
+		    fluid_synth_noteon(synth, NOTE_CHANNEL, note, volume);
 		}
 	    }
 	}
@@ -801,28 +819,30 @@ int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 	// Control key
 
     case GDK_Control_L:
+    case GDK_Control_R:
 	if (control)
 	{
 	    control = FALSE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[BASS]),
 					 FALSE);
 	    int note = bass[key][bellows];
-	    short_message(BASSOFF, note, 0);
+	    fluid_synth_noteoff(synth, BASS_CHANNEL, note);
 	}
 	return;
 
 	// Alt key
 
     case GDK_Alt_L:
+    case GDK_Alt_R:
 	if (alt)
 	{
 	    alt = FALSE;
 	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[CHORD]),
 					 FALSE);
 	    int note = chord[key][0][bellows];
-	    short_message(CHRDOFF, note, 0);
+	    fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
 	    note = chord[key][1][bellows];
-	    short_message(CHRDOFF, note, 0);
+	    fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
 	}
 	return;
 #endif
@@ -844,7 +864,7 @@ int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(display[m]),
 					     FALSE);
 		int note = notes[layout][n][bellows] + keyvals[key];
-		short_message(NOTEOFF, note, 0);
+		fluid_synth_noteoff(synth, NOTE_CHANNEL, note);
 	    }
 	}
 	return;
@@ -855,23 +875,10 @@ int key_release(GtkWidget *window, GdkEventKey *event, gpointer data)
 	    gtk_combo_box_set_active(GTK_COMBO_BOX(key_combo), i);
 }
 
-// Midi reset
-
-int midi_reset()
-{
-}
-
-// Send a short midi message
-
-int short_message(int s, int n, int v)
-{
-}
-
-// Reset the toggle button if clicked, currently disabled because of
-// strange interaction with the space bar
+// Reset the toggle button if clicked
 
 int button_clicked(GtkWidget *button, gboolean *pressed)
 {
-//        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button),
-//     				 *pressed);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button),
+    				 *pressed);
 }

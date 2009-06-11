@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([Melodeon], [1.0])
+AC_INIT([Melodeon], [1.05])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([Melodeon.c])
 
@@ -12,6 +12,7 @@ PKG_PROG_PKG_CONFIG
 
 # Checks for libraries.
 PKG_CHECK_MODULES([GTK],[gtk+-2.0])
+PKG_CHECK_MODULES([FLUIDSYNTH],[fluidsynth])
 
 # Checks for header files.
 
