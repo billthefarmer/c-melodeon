@@ -11,7 +11,7 @@ http://melodeon.googlecode.com/files/Screenshot-Melodeon.png
 
 There are several things to be done to get this emulator working on any given platform:
 
- * Learn the gui for the platform, in this case there is a choice of Gtk+ or QT. I chose Gtk+ because I use Ubuntu, which uses Gnome.
+ * Learn the gui for the platform, in this case there is a choice of [http://www.gtk.org Gtk+] or [http://www.qtsoftware.com/products QT]. I chose [http://www.gtk.org Gtk+] because I use [http://www.ubuntu.com Ubuntu], which uses [http://www.gnome.org Gnome].
 
  * Find out how to capture user keystrokes. This isn't necessarily as simple as it seems, as we are using the function keys, and the control and alt keys. In windows the F10 key goes somewhere different from the others.
 
@@ -23,4 +23,6 @@ There are several things to be done to get this emulator working on any given pl
 
  * I have created the user interface, with interaction with the tool widgets and the keyboard. I have not found out yet how to stop the alt-spacebar side effect, which pops up the application window menu and spoils the fun. This is potential show stopper. It appears that it is not possible to stop this unless you get the user to change the keyboard mapping of his window manager. Not very likely. So the linux version will be without bass.
 
- * I have found out how to use ALSA to send midi messages to the sound card. There are conflicting messages out there as to whether current linux kernels need/load a sound bank file into the sound card. To be investigated...
+ * I have found out how to use ALSA to send midi messages to the sound card. There are conflicting messages out there as to whether current linux kernels need/load a sound bank file into the sound card. That doesn't help much unless you have an AWE32/64 sound card, with a built in synthesizer, in which case you need sfxload/asfxload to load a sound bank. You can get one from the [http://alsa.opensrc.org/index.php/SoundfontHandling ALSA unofficial wiki]: [http://www.alsa-project.org/~james/sound-fonts/8MBGMSFX.SF2 8MBGMSFX.SF2].
+
+ * If you have a sound card without a synthesizer, you need to use [http://timidity.sourceforge.net Timidity] or [http://fluidsynth.resonance.org/trac Fluidsynth]. I have chosen Fluidsynth because it has a shared library, so users only need the library, not the whole thing.
