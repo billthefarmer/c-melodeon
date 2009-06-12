@@ -3,7 +3,7 @@
 
 = Introduction =
 
-A linux version is in development using Gtk+.
+A linux version is in development using [http://www.gtk.org Gtk+].
 
 http://melodeon.googlecode.com/files/Screenshot-Melodeon.png
 
