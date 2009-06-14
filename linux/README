@@ -1,0 +1,82 @@
+                              Melodeon
+                              ========
+
+One row melodeon emulator with bass. Uses the standard PC keyboard
+function keys F1-F12 as melodeon buttons, the Control and Alt keys as
+bass buttons, and the space bar as the bellows. Unfortunately,
+depending on your luck, the keyboard on your PC may not detect more
+than two or three buttons pressed at once. I found an old keyboard
+worked much better. You can see what is going on in the bottom half of
+the melodeon window, which shows what keys the program thinks are
+pressed.
+
+Dependancies
+============
+
+Melodeon uses ALSA, FluidSynth, and Gtk+, so you need libasound2,
+libfluidsynth1, and libgtk2.0-0. If you are running a Debian-like
+system, like Ubuntu, you can get these with the shell command 'sudo
+apt-get install libasound2 libfluidsynth1 libgtk2.0-0'. That should
+take care of any further dependancies. Fluidsynth also needs a
+soundfont file. I have included 8MBGMSFX.SF2, which is available from
+the ALSA wiki: http://alsa.opensrc.org/8MBGMSFX.SF2.
+
+Controls
+========
+
+There are three drop down controls, a check box, a volume control, and
+a button in the top half of the window. The instruments drop down lets
+you choose what midi instrument you would like to attempt to play. The
+reverse button check box lets you play widdershins. The key drop down
+lets you choose a key to play in. There is a choice of Eb, Bb, F, C,
+G, D, A. The key defaults to C. More kays can be added by popular
+request, or you can hack the program yourself. The layout drop down
+lets you choose a layout. The volume control lets you change the
+volume. The volume defaults to maximum. The quit button lets you give
+up, or you can click on the window close icon. The key may be changed
+by pressing the letter key corresponding to the desired playing
+key. The buttons may be reversed by pressing the 'R' key.
+
+Playing
+=======
+
+Hold the PC keyboard in a vertical position, so the function keys are
+on the side you want to play the melody on. Adjust the reverse check
+box according to which hand you want to use. Press the keys as if they
+were melodeon buttons, and press the space bar to emulate waggling the
+bellows. If you don't know how to play melodeon see
+http://info.melodeon.net
+
+Files
+=====
+
+AUTHORS		- Authors
+aclocal.m4	- Part of autoconf
+ChangeLog	- Change log
+configure	- Configuration script
+configure.ac	- Input to autoconf
+COPYING		- Licence file
+INSTALL		- Installation instructions
+install-sh	- Install script, used by make install
+Makefile	- Nice simple Makefile with no auto...
+Makefile.am	- Input to automake
+Makefile.de	- Not a German Makefile, but a backup of the nice simple one
+Makefile.in	- Build file
+Melodeon.c	- Source file
+Melodeon	- Application
+NEWS		- News
+README		- This file
+
+Building
+========
+
+You have a choice: If you have a Debian/Ubuntu system, you should be
+able to just type 'make'. The dependancies are: libasound2-dev and
+libgtk2.0-dev, so if you haven't got them installed, you can type
+'sudo apt-get install libasound2-dev libgtk2.0-dev'. This will install
+loads of other stuff as well. If you want the full monty with error
+messages buried in pages of gnubabble, or your system is completely
+different, type './configure', 'make' and 'make install' if
+successful. See INSTALL for the official instructions. This will
+overwrite the nice simple Makefile, but there is a cunning backup in
+Makefile.de. Obviously autoconf doesn't understand German.

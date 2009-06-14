@@ -23,6 +23,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <gtk/gtk.h>
+#include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
 #include <fluidsynth.h>
 
@@ -63,7 +64,7 @@
 
 // Sount font file
 
-#define SOUND_FONT_FILE "8MBGMSFX.SF2"
+#define SOUND_FONT_FILE "/usr/local/share/soundfonts/8MBGMSFX.SF2"
 
 // List of midi instruments
 
@@ -215,7 +216,7 @@ int instrument_changed(GtkWidget*, fluid_synth_t*);
 int key_changed(GtkWidget*, GtkWindow*);
 int layout_changed(GtkWidget*, GtkWindow*);
 int reverse_changed(GtkWidget*, GtkWindow*);
-int volume_changed(GtkWidget*, GtkWindow*);
+int volume_changed(GtkWidget*, gdouble, GtkWindow*);
 int quit_clicked(GtkWidget*, GtkWindow*);
 int button_clicked(GtkWidget*, gboolean*);
 int key_press(GtkWidget*, GdkEventKey*, fluid_synth_t*);
@@ -254,13 +255,34 @@ int main(int argc, char *argv[])
 
     settings = new_fluid_settings();
 
+    // Set driver
+
+    fluid_settings_setstr(settings, "audio.driver", "alsa");
+
     // Create synthesizer
 
     synth = new_fluid_synth(settings);
 
+    // Create audio driver
+
+    adriver = new_fluid_audio_driver(settings, synth);
+
     // Load soundfont
 
     id = fluid_synth_sfload(synth, SOUND_FONT_FILE, 0);
+
+    // Check the soundfont has loaded
+
+    if (id == -1)
+    {
+	// Clean up
+
+	delete_fluid_audio_driver(adriver);
+	delete_fluid_synth(synth);
+	delete_fluid_settings(settings);
+
+	return 1;
+    }
 
     // Initialise GTK
 
@@ -338,6 +360,8 @@ int main(int argc, char *argv[])
     g_signal_connect(G_OBJECT(combo), "changed",
 		     G_CALLBACK(instrument_changed), synth);
 
+    instrument_changed(combo, synth);
+
     // Key combo box
 
     combo = gtk_combo_box_new_text();
@@ -355,6 +379,8 @@ int main(int argc, char *argv[])
 
     g_signal_connect(G_OBJECT(combo), "changed",
 		     G_CALLBACK(key_changed), window);
+
+    key_changed(combo, GTK_WINDOW(window));
 
     // Key label
 
@@ -403,6 +429,8 @@ int main(int argc, char *argv[])
 
     g_signal_connect(G_OBJECT(combo), "changed",
 		     G_CALLBACK(layout_changed), window);
+
+    layout_changed(combo, GTK_WINDOW(window));
 
     // Layout label
 
@@ -501,6 +529,27 @@ int main(int argc, char *argv[])
 			 G_CALLBACK(button_clicked), &buttons[i]);
     }
 
+    // Stop autorepeat, this is a bit arcane and is global, so must be
+    // restored back again
+
+    GdkScreen *screen = gtk_window_get_screen(GTK_WINDOW(window));
+    GdkDisplay *gd = gdk_screen_get_display(screen);
+    Display *disp = gdk_x11_display_get_xdisplay(gd);
+
+    // Structures for the keyboard control functions
+
+    XKeyboardState state;
+    XKeyboardControl control;
+
+    // Get the state of the keyboard
+
+    XGetKeyboardControl(disp, &state);
+
+    // Turn the auto repeat off
+
+    control.auto_repeat_mode = AutoRepeatModeOff;
+    XChangeKeyboardControl(disp, KBAutoRepeatMode, &control);
+
     // Key pressed callback
 
     g_signal_connect(G_OBJECT(window), "key_press_event",
@@ -528,7 +577,22 @@ int main(int argc, char *argv[])
 
     gtk_main();
 
-    // Exit
+    // Clean up
+
+    delete_fluid_audio_driver(adriver);
+    delete_fluid_synth(synth);
+    delete_fluid_settings(settings);
+
+    // Set auto repeat back
+
+    control.auto_repeat_mode = state.global_auto_repeat;
+    XChangeKeyboardControl(disp, KBAutoRepeatMode, &control);
+
+    // Make sure it gets there
+
+    XFlush(disp);
+
+   // Exit
 
     return 0;
 }
@@ -562,12 +626,12 @@ int instrument_changed(GtkWidget *widget, fluid_synth_t *synth)
     fluid_sfont_t *sfont = fluid_synth_get_sfont(synth, 0);
     int id = sfont->id;
 
-    fluid_synth_program_select(synth, 0, id, 0, inst); 
+    fluid_synth_program_select(synth, NOTE_CHANNEL, id, 0, inst); 
 
 #ifdef BASSBUTTONS
 
-    fluid_synth_program_select(synth, 1, id, 0, inst);
-    fluid_synth_program_select(synth, 2, id, 0, inst);
+    fluid_synth_program_select(synth, BASS_CHANNEL, id, 0, inst);
+    fluid_synth_program_select(synth, CHRD_CHANNEL, id, 0, inst);
 
 #endif
 }
@@ -598,9 +662,9 @@ int reverse_changed(GtkWidget *widget, GtkWindow *window)
 
 // Volume changed
 
-int volume_changed(GtkWidget *widget, GtkWindow *window)
+int volume_changed(GtkWidget *widget, gdouble value, GtkWindow *window)
 {
-    volume = gtk_scale_button_get_value(GTK_SCALE_BUTTON(widget)) * MAXVOL;
+    volume = value * MAXVOL;
     gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
 
@@ -879,6 +943,6 @@ int key_release(GtkWidget *window, GdkEventKey *event, fluid_synth_t *synth)
 
 int button_clicked(GtkWidget *button, gboolean *pressed)
 {
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button),
-    				 *pressed);
+//     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button),
+//     				 *pressed);
 }
