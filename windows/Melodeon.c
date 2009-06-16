@@ -433,7 +433,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	inst =
 	    CreateWindow(WC_COMBOBOX, // Predefined class.
 			 NULL,        // No text.
-			 WS_VISIBLE | WS_CHILD |
+			 WS_VISIBLE | WS_CHILD | WS_VSCROLL |
 			 CBS_DROPDOWNLIST, // Styles.
 			 102,         // x position.
 			 20,          // y position.
@@ -721,7 +721,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 	// Open a midi out device
 
-	midiOutOpen(&hmdo, 0, 0, 0, CALLBACK_NULL);
+	midiOutOpen(&hmdo, -1, 0, 0, CALLBACK_NULL);
 
 	// Change the instrument
 
@@ -950,6 +950,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 			       MB_ICONQUESTION |
 			       MB_DEFBUTTON1) == IDOK)
 		{
+		    midiOutReset(hmdo);
 		    midiOutClose(hmdo);
 		    PostQuitMessage(0);
 		}
