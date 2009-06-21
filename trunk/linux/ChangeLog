@@ -1,4 +1,9 @@
-11-June-09 Bill Farmer
+18-June-09  Bill Farmer
+
+	* Melodeon.c Added code to turn off keyboard auto repeat and to
+	notify users. Notification turned of by conditionals.
+	
+11-June-09  Bill Farmer
 
 	* Melodeon.c Added support for fluidsynth.
 
