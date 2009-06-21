@@ -25,6 +25,10 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
+#ifdef NOTIFY
+#include <libnotify/notify.h>
+#include <gconf/gconf-client.h>
+#endif
 #include <fluidsynth.h>
 
 // Macros
@@ -64,7 +68,8 @@
 
 // Sount font file
 
-#define SOUND_FONT_FILE "/usr/local/share/soundfonts/8MBGMSFX.SF2"
+#define SOUND_FONT_FILE "8MBGMSFX.SF2"
+#define SOUND_FONT_PATH "/usr/share/sounds/sf2/"
 
 // List of midi instruments
 
@@ -205,12 +210,6 @@ GtkWidget *reverse_button;
 
 int volume = MAXVOL;
 
-// Midi ports
-
-char **ports;
-
-int port;
-
 // Function declarations
 int instrument_changed(GtkWidget*, fluid_synth_t*);
 int key_changed(GtkWidget*, GtkWindow*);
@@ -219,9 +218,13 @@ int reverse_changed(GtkWidget*, GtkWindow*);
 int volume_changed(GtkWidget*, gdouble, GtkWindow*);
 int quit_clicked(GtkWidget*, GtkWindow*);
 int button_clicked(GtkWidget*, gboolean*);
+int focus_out(GtkWidget*, GdkEventFocus*, fluid_synth_t*);
 int key_press(GtkWidget*, GdkEventKey*, fluid_synth_t*);
 int key_release(GtkWidget*, GdkEventKey*, fluid_synth_t*);
-
+#ifdef NOTIFY
+int icon_popup_menu(GtkStatusIcon*, uint, uint, GtkMenu*);
+int menu_item_activate(GtkCheckMenuItem*, GConfClient*);
+#endif
 // Main function
 
 int main(int argc, char *argv[])
@@ -242,11 +245,15 @@ int main(int argc, char *argv[])
     GtkWidget *reverse;
     GtkWidget *separator;
 
+    // Initialise GTK
+
+    gtk_init(&argc, &argv);
+
     // Fluidsynth
 
     fluid_synth_t *synth;
     fluid_settings_t *settings;
-    fluid_audio_driver_t *adriver;
+    fluid_audio_driver_t *driver;
 
     int id;
     int i;
@@ -265,28 +272,94 @@ int main(int argc, char *argv[])
 
     // Create audio driver
 
-    adriver = new_fluid_audio_driver(settings, synth);
+    driver = new_fluid_audio_driver(settings, synth);
 
     // Load soundfont
 
-    id = fluid_synth_sfload(synth, SOUND_FONT_FILE, 0);
+    id = fluid_synth_sfload(synth, SOUND_FONT_PATH
+			    SOUND_FONT_FILE, 0);
 
     // Check the soundfont has loaded
 
-    if (id == -1)
+    while (id == -1)
     {
+	// Show message
+
+	GtkWidget *dialog =
+	    gtk_message_dialog_new(NULL,
+				   GTK_DIALOG_MODAL,
+				   GTK_MESSAGE_QUESTION,
+				   GTK_BUTTONS_YES_NO,
+				   "Melodeon");
+
+	gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog),
+						 "Unable to load soundfont"
+						 " file:\n'%s'\n"
+						 "Do you have an alternative"
+						 " file?",
+						 SOUND_FONT_PATH
+						 SOUND_FONT_FILE);
+
+	// Check response
+
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_YES)
+	{
+	    // Destroy dialog
+
+	    gtk_widget_destroy(dialog);
+
+	    // Show file chooser
+
+	    dialog = gtk_file_chooser_dialog_new ("Open Soundfont File",
+						  NULL,
+						  GTK_FILE_CHOOSER_ACTION_OPEN,
+						  GTK_STOCK_CANCEL,
+						  GTK_RESPONSE_CANCEL,
+						  GTK_STOCK_OPEN,
+						  GTK_RESPONSE_ACCEPT,
+						  NULL);
+
+	    // Add filters
+
+	    GtkFileFilter *filter = gtk_file_filter_new();
+	    gtk_file_filter_add_pattern(filter, "*.[sS][fF]2");
+	    gtk_file_filter_set_name(filter, "Soundfont files");
+	    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+	    filter = gtk_file_filter_new();
+	    gtk_file_filter_add_pattern(filter, "*");
+	    gtk_file_filter_set_name(filter, "All files");
+	    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+
+	    // Check the response
+
+	    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT)
+	    {
+		char *file =
+		    gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+
+		// Load soundfont
+
+		id = fluid_synth_sfload(synth, file, 0);
+
+		// Destroy dialog
+
+		gtk_widget_destroy(dialog);
+		continue;
+	    }
+	}
+
+	// Destroy dialog
+
+	gtk_widget_destroy(dialog);
+
 	// Clean up
 
-	delete_fluid_audio_driver(adriver);
+	delete_fluid_audio_driver(driver);
 	delete_fluid_synth(synth);
 	delete_fluid_settings(settings);
 
 	return 1;
     }
-
-    // Initialise GTK
-
-    gtk_init(&argc, &argv);
 
     // Create main window
 
@@ -529,8 +602,32 @@ int main(int argc, char *argv[])
 			 G_CALLBACK(button_clicked), &buttons[i]);
     }
 
+    // Focus out callback
+
+    g_signal_connect(G_OBJECT(window), "focus-out-event",
+		     G_CALLBACK(focus_out), synth);
+
+    // Key pressed callback
+
+    g_signal_connect(G_OBJECT(window), "key-press-event",
+		     G_CALLBACK(key_press), synth);
+
+    // Key released callback
+
+    g_signal_connect(G_OBJECT(window), "key-release-event",
+		     G_CALLBACK(key_release), synth);
+
+    // Destroy window callback
+
+    g_signal_connect(window, "destroy",
+		     G_CALLBACK(gtk_main_quit), NULL);
+
+    // Show the window
+
+    gtk_widget_show_all(window);
+
     // Stop autorepeat, this is a bit arcane and is global, so must be
-    // restored back again
+    // restored on exit
 
     GdkScreen *screen = gtk_window_get_screen(GTK_WINDOW(window));
     GdkDisplay *gd = gdk_screen_get_display(screen);
@@ -549,26 +646,59 @@ int main(int argc, char *argv[])
 
     control.auto_repeat_mode = AutoRepeatModeOff;
     XChangeKeyboardControl(disp, KBAutoRepeatMode, &control);
+#ifdef NOTIFY
+    // Start the gconf system
 
-    // Key pressed callback
+    g_type_init();
 
-    g_signal_connect(G_OBJECT(window), "key_press_event",
-		     G_CALLBACK(key_press), synth);
+    GConfClient *client = gconf_client_get_default();
 
-    // Key released callback
+    // Get the show_notification value
 
-    g_signal_connect(G_OBJECT(window), "key_release_event",
-		     G_CALLBACK(key_release), synth);
+    GConfValue *value =
+	gconf_client_get(client, "/apps/melodeon/notification", NULL);
 
-    // Destroy window callback
+    if (value == NULL ||
+	!GCONF_VALUE_TYPE_VALID(value->type) ||
+	gconf_value_get_bool(value))
+    {
+	// Create a menu
 
-    g_signal_connect(window, "destroy",
-		     G_CALLBACK(gtk_main_quit), NULL);
+	GtkWidget *menu = gtk_menu_new();
+	GtkWidget *item =
+	    gtk_check_menu_item_new_with_label("Don't show this again");
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+	gtk_widget_show_all(menu);
 
-    // Show the window
+	g_signal_connect(item, "activate",
+			 G_CALLBACK(menu_item_activate), client);
 
-    gtk_widget_show_all(window);
+	// Create a status icon
 
+	GtkStatusIcon *icon = gtk_status_icon_new_from_icon_name("application");
+	gtk_status_icon_set_tooltip_text(icon,
+			   "Keyboard auto repeat temporarily disabled");
+
+	g_signal_connect(icon, "popup-menu",
+			 G_CALLBACK(icon_popup_menu), menu);
+
+	// Show the status icon
+
+	gtk_status_icon_set_visible(icon, TRUE);
+
+	// Show a notification
+
+	notify_init("Melodeon");
+	NotifyNotification *note =
+	    notify_notification_new("Melodeon",
+				    "Keyboard auto repeat has been temporarily "
+				    "disabled, it will restored when Melodeon "
+				    "exits", "dialog-information", NULL);
+
+// 	notify_notification_attach_to_status_icon(note, icon);
+	notify_notification_show(note, NULL);
+    }
+#endif
     // Set focus to the window
 
     gtk_window_set_focus(GTK_WINDOW(window), NULL);
@@ -579,7 +709,7 @@ int main(int argc, char *argv[])
 
     // Clean up
 
-    delete_fluid_audio_driver(adriver);
+    delete_fluid_audio_driver(driver);
     delete_fluid_synth(synth);
     delete_fluid_settings(settings);
 
@@ -591,8 +721,37 @@ int main(int argc, char *argv[])
     // Make sure it gets there
 
     XFlush(disp);
+#ifdef NOTIFY
+    // Get the show_notification value
 
-   // Exit
+    value =
+	gconf_client_get(client, "/apps/melodeon/notification", NULL);
+
+    if (value == NULL ||
+	!GCONF_VALUE_TYPE_VALID(value->type) ||
+	gconf_value_get_bool(value))
+    {
+	// Show a notification
+
+	NotifyNotification *note =
+	    notify_notification_new("Melodeon",
+				    "Keyboard auto repeat has been restored",
+				    "dialog-information",
+				    NULL);
+
+	notify_notification_show(note, NULL);
+    }
+
+    // Uninit notify
+
+    if (notify_is_initted())
+	notify_uninit();
+
+    // Unref the gconf client
+
+    g_object_unref(client);
+#endif
+    // Exit
 
     return 0;
 }
@@ -667,6 +826,75 @@ int volume_changed(GtkWidget *widget, gdouble value, GtkWindow *window)
     volume = value * MAXVOL;
     gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
+#ifdef NOTIFY
+// Icon popup menu
+
+int icon_popup_menu(GtkStatusIcon *icon, uint button, uint time, GtkMenu *menu)
+{
+    gtk_menu_popup(menu, NULL, NULL,
+		   gtk_status_icon_position_menu,
+		   icon, button, time);
+}
+
+// Menu item activate
+
+int menu_item_activate(GtkCheckMenuItem *item, GConfClient *client)
+{
+    GConfValue *value = gconf_value_new(GCONF_VALUE_BOOL);
+    gboolean show = !gtk_check_menu_item_get_active(item);
+
+    gconf_value_set_bool(value, show);
+    gconf_client_set(client, "/apps/melodeon/notification", value, NULL);
+}
+#endif
+// Focus out event
+
+int focus_out(GtkWidget *widget, GdkEventFocus *event, fluid_synth_t *synth)
+{
+    int i;
+
+    // Stop all notes, and reset buttons
+#ifdef BASSBUTTONS
+    if (control)
+    {
+	int note = bass[key][bellows];
+	fluid_synth_noteoff(synth, BASS_CHANNEL, note);
+
+	control = FALSE;
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[BASS]),
+				     FALSE);
+    }
+
+    if (alt)
+    {
+	int note = chord[key][0][bellows];
+	fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
+	note = chord[key][1][bellows];
+	fluid_synth_noteoff(synth, CHRD_CHANNEL, note);
+
+	alt = FALSE;
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(bassdisp[CHORD]),
+				     FALSE);
+    }
+#endif
+    for (i = 0; i != LENGTH(buttons); i++)
+    {
+	if (buttons[i])
+	{
+	    int note = notes[layout][i][bellows] + keyvals[key];
+	    fluid_synth_noteoff(synth, NOTE_CHANNEL, note);
+
+	    buttons[i] = FALSE;
+	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(display[i]),
+					 FALSE);
+	}
+    }
+
+    if (bellows)
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(spacebar),
+				     FALSE);
+}
+
 
 // Key press event
 
