@@ -3,13 +3,13 @@
 
 = Introduction =
 
-I have looked at developing a Mac version.
+I am looking at developing a Mac version.
 
 == Issues ==
 
 There are several things to be done to get this emulator working on any given platform:
 
- * Learn the gui for the platform, in this case there is a possibility of using QT.
+ * Learn the gui for the platform, in this case there is a possibility of using Carbon.
 
  * Find out how to capture user keystrokes. This isn't necessarily as simple as it seems, as we are using the function keys, and the control and alt keys. In windows the F10 key goes somewhere different from the others. The keys may be different on a Mac for all I know.
 
@@ -20,4 +20,4 @@ There are several things to be done to get this emulator working on any given pl
 == Progress ==
 
  * I don't have a Mac. I have made a quick investigation into cross development on windows or linux, but it doesn't look hopeful.
- * I have discovered that it is possible to run hacked versions of Mac OS X on a PC, so I am currently investigation development on a Hackintosh using Carbon.
+ * I have discovered that it is possible to run hacked versions of Mac OSX on a PC, so I am currently investigation development on a Hackintosh using Carbon.
