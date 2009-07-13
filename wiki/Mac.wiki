@@ -20,3 +20,4 @@ There are several things to be done to get this emulator working on any given pl
 == Progress ==
 
  * I don't have a Mac. I have made a quick investigation into cross development on windows or linux, but it doesn't look hopeful.
+ * I have discovered that it is possible to run hacked versions of Mac OS X on a PC, so I am currently investigation development on a Hackintosh using Carbon.
