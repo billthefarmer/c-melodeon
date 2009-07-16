@@ -5,6 +5,8 @@
 
 I am looking at developing a Mac version.
 
+|| http://melodeon.googlecode.com/files/Snapshot-Melodeon.png ||
+
 == Issues ==
 
 There are several things to be done to get this emulator working on any given platform:
