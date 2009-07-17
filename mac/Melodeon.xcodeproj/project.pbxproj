@@ -1,0 +1,193 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 42;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		232B1FFB100B51CE00B480E0 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 232B1FFA100B51CE00B480E0 /* Carbon.framework */; };
+		23DE5DDC100A6FD600E3983F /* Melodeon.c in Sources */ = {isa = PBXBuildFile; fileRef = 23DE5DDB100A6FD600E3983F /* Melodeon.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		232B1FFA100B51CE00B480E0 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
+		23DE5DD1100A6F4700E3983F /* Melodeon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Melodeon.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		23DE5DD4100A6F4700E3983F /* Melodeon-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Melodeon-Info.plist"; sourceTree = "<group>"; };
+		23DE5DDB100A6FD600E3983F /* Melodeon.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Melodeon.c; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		23DE5DCF100A6F4700E3983F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				232B1FFB100B51CE00B480E0 /* Carbon.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		23DE5DC0100A6F2200E3983F = {
+			isa = PBXGroup;
+			children = (
+				232B1FFA100B51CE00B480E0 /* Carbon.framework */,
+				23DE5DD2100A6F4700E3983F /* Products */,
+				23DE5DD4100A6F4700E3983F /* Melodeon-Info.plist */,
+				23DE5DDB100A6FD600E3983F /* Melodeon.c */,
+			);
+			sourceTree = "<group>";
+		};
+		23DE5DD2100A6F4700E3983F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				23DE5DD1100A6F4700E3983F /* Melodeon.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		23DE5DD0100A6F4700E3983F /* Melodeon */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 23DE5DD5100A6F4900E3983F /* Build configuration list for PBXNativeTarget "Melodeon" */;
+			buildPhases = (
+				23DE5DCD100A6F4700E3983F /* Resources */,
+				23DE5DCE100A6F4700E3983F /* Sources */,
+				23DE5DCF100A6F4700E3983F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Melodeon;
+			productName = Melodeon;
+			productReference = 23DE5DD1100A6F4700E3983F /* Melodeon.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		23DE5DC2100A6F2200E3983F /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 23DE5DC3100A6F2200E3983F /* Build configuration list for PBXProject "Melodeon" */;
+			hasScannedForEncodings = 0;
+			mainGroup = 23DE5DC0100A6F2200E3983F;
+			productRefGroup = 23DE5DD2100A6F4700E3983F /* Products */;
+			projectDirPath = "";
+			targets = (
+				23DE5DD0100A6F4700E3983F /* Melodeon */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		23DE5DCD100A6F4700E3983F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		23DE5DCE100A6F4700E3983F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				23DE5DDC100A6FD600E3983F /* Melodeon.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		23DE5DC4100A6F2200E3983F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Debug;
+		};
+		23DE5DC5100A6F2200E3983F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+			};
+			name = Release;
+		};
+		23DE5DD6100A6F4900E3983F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
+				INFOPLIST_FILE = "Melodeon-Info.plist";
+				INSTALL_PATH = "$(HOME)/Applications";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Carbon,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Melodeon;
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = YES;
+			};
+			name = Debug;
+		};
+		23DE5DD7100A6F4900E3983F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
+				INFOPLIST_FILE = "Melodeon-Info.plist";
+				INSTALL_PATH = "$(HOME)/Applications";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Carbon,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Melodeon;
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		23DE5DC3100A6F2200E3983F /* Build configuration list for PBXProject "Melodeon" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23DE5DC4100A6F2200E3983F /* Debug */,
+				23DE5DC5100A6F2200E3983F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		23DE5DD5100A6F4900E3983F /* Build configuration list for PBXNativeTarget "Melodeon" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23DE5DD6100A6F4900E3983F /* Debug */,
+				23DE5DD7100A6F4900E3983F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 23DE5DC2100A6F2200E3983F /* Project object */;
+}
