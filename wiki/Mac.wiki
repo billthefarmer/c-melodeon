@@ -7,6 +7,8 @@ I am looking at developing a Mac version.
 
 || http://melodeon.googlecode.com/files/Snapshot-Melodeon.png ||
 
+This screen shot looks a bit strange because the grab app doesn't capture the window border.
+
 == Issues ==
 
 There are several things to be done to get this emulator working on any given platform:
