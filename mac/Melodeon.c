@@ -302,7 +302,10 @@ int main(int argc, char *argv[])
         // Set the current instrument
 
         if (strcmp(instruments[i], "Accordion") == 0)
+	{
+	    HIViewSetValue(combo, i);
             instrument = i;
+	}
     }
 
     // Bounds of check box
@@ -665,39 +668,77 @@ int main(int argc, char *argv[])
 OSStatus CommandHandler(EventHandlerCallRef next,
 			EventRef event, void *data)
 {
-    DialogRef dialog;
+    HICommandExtended command;
+    UInt32 value;
 
-    // Get the event class and kind
-
-    UInt32 klass = GetEventClass(event);
-    UInt32 kind  = GetEventKind(event);
-
-    HICommand command;
+    // Get the command
 
     GetEventParameter(event, kEventParamDirectObject,
 		      typeHICommand, NULL, sizeof(HICommand),
 		      NULL, &command);
 
+    // Get the value
+
+    value = GetControl32BitValue(command.source.control);
+
+    // Switch on the command ID
+
     switch (command.commandID)
     {
         // Intrument
 
-        case kCommandInst:
-            break;
+    case kCommandInst:
+	instrument = HIViewGetValue(command.source.control);
+	break;
+
+	// Reverse
+
+    case kCommandReverse:
+	reverse = value;
+	break;
+
+	// Key
+
+    case kCommandKey:
+	key = HIViewGetValue(command.source.control);
+	break;
+
+	// Volume
+
+    case kCommandVolume:
+	volume = value;
+	break;
+
+	// Layout
+
+    case kCommandLayout:
+	layout = HIViewGetValue(command.source.control;
+	break;
 
         // Quit
 
-        case kHICommandQuit:
+    case kHICommandQuit:
 
-            // Let the default handler handle it
+	// Let the default handler handle it
 
-            return eventNotHandledErr;
+    default:
+	return eventNotHandledErr;
     }
-    
+
+    union {
+	UInt32 command;
+	char buffer[5];
+    } id;
+
+    id.buffer[4] = '\0';
+    id.command = command.commandID;
+
     CFStringRef message =
 	CFStringCreateWithFormat(NULL, NULL,
-				 CFSTR("Command = '%x'"),
-				 command.commandID);
+				 CFSTR("Command = '%s', value = '%d'"),
+				 id.buffer, value);
+
+    DialogRef dialog;
 
     // kAlertCautionAlert, kAlertPlainAlert
 
@@ -718,12 +759,8 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 OSStatus  KeyboardHandler(EventHandlerCallRef next,
 			  EventRef event, void *data)
 {
-    // Get the event class and kind
-
-    UInt32 klass = GetEventClass(event);
-    UInt32 kind  = GetEventKind(event);
-
     UInt32 key;
+    char buffer[32];
     char c;
 
     // Get the key code
@@ -734,12 +771,15 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
     GetEventParameter(event, kEventParamKeyMacCharCodes, typeChar,
                       NULL, sizeof(c), NULL, &c);
 
+    GetEventParameter(event, kEventParamKeyUnicodes, typeUnicodeText,
+                      NULL, sizeof(buffer), NULL, &buffer);
+
     // kEventParamKeyCode
 
     CFStringRef message =
 	CFStringCreateWithFormat(NULL, NULL,
-				 CFSTR("Key = '%x', '%c'"),
-				 key, c);
+				 CFSTR("Key = '%x', '%c', '%s'"),
+				 key, c, buffer);
 
     DialogRef dialog;
 
