@@ -302,10 +302,7 @@ int main(int argc, char *argv[])
         // Set the current instrument
 
         if (strcmp(instruments[i], "Accordion") == 0)
-	{
-	    HIViewSetValue(combo, i);
             instrument = i;
-	}
     }
 
     // Bounds of check box
@@ -631,6 +628,18 @@ int main(int argc, char *argv[])
     HIViewAddSubview(group, text);
     HIViewPlaceInSuperviewAt(text, 0, 2);
 
+    // Combo box events type spec
+
+    EventTypeSpec comboBoxEvents[] =
+	{{kEventClassHIComboBox, kEventComboBoxListItemSelected},
+	 {kEventClassTextField, kEventTextAccepted}};
+
+    // Install event handler
+
+    InstallApplicationEventHandler(NewEventHandlerUPP(ComboBoxHandler),
+				   LENGTH(comboBoxEvents), comboBoxEvents,
+				   NULL, NULL);
+
     // Command events type spec
 
     EventTypeSpec commandEvents[] =
@@ -646,9 +655,9 @@ int main(int argc, char *argv[])
 
     EventTypeSpec keyboardEvents[] =
         {{kEventClassKeyboard, kEventRawKeyDown},
-        {kEventClassKeyboard, kEventRawKeyUp}};
+	 {kEventClassKeyboard, kEventRawKeyUp}};
 
-     // Install event handler
+    // Install event handler
 
     InstallApplicationEventHandler(NewEventHandlerUPP(KeyboardHandler),
 				   LENGTH(keyboardEvents), keyboardEvents,
@@ -687,9 +696,9 @@ OSStatus CommandHandler(EventHandlerCallRef next,
     {
         // Intrument
 
-    case kCommandInst:
-	instrument = HIViewGetValue(command.source.control);
-	break;
+//     case kCommandInst:
+// 	instrument = HIViewGetValue(command.source.control);
+// 	break;
 
 	// Reverse
 
@@ -699,9 +708,9 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 
 	// Key
 
-    case kCommandKey:
-	key = HIViewGetValue(command.source.control);
-	break;
+//     case kCommandKey:
+// 	key = HIViewGetValue(command.source.control);
+// 	break;
 
 	// Volume
 
@@ -711,9 +720,9 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 
 	// Layout
 
-    case kCommandLayout:
-	layout = HIViewGetValue(command.source.control;
-	break;
+//     case kCommandLayout:
+// 	layout = HIViewGetValue(command.source.control);
+// 	break;
 
         // Quit
 
@@ -750,6 +759,61 @@ OSStatus CommandHandler(EventHandlerCallRef next,
     RunStandardAlert(dialog, NULL, NULL);
 
     // Report success
+
+    return noErr;
+}
+
+// Combo box handler
+
+OSStatus ComboBoxHandler(EventHandlerCallRef next,
+			 EventRef event, void *data)
+{
+    ControlRef combo;
+    CFIndex index;
+    UInt32 id;
+
+    // Get the control
+
+    GetEventParameter(event, kEventParamDirectObject,
+		      typeControlRef, NULL, sizeof(combo),
+		      NULL, &combo);
+
+    // Get the command id
+
+    GetControlCommandID(combo, &id);
+
+    switch (GetEventKind(event))
+    {
+    case kEventComboBoxListItemSelected:
+	GetEventParameter(event, kEventParamComboBoxListItemSelectedItemIndex,
+			  typeCFIndex, NULL, sizeof(index),
+			  NULL, &index);
+
+	switch (id)
+	{
+	case kCommandInst:
+	    instrument = index;
+	    break;
+
+	case kCommandKey:
+	    key = index;
+	    break;
+
+	case kCommandLayout:
+	    layout = index;
+	    break;
+
+	default:
+	    return eventNotHandledErr;
+	}
+	break;
+
+    case kEventTextAccepted:
+	break;
+
+    default:
+	return eventNotHandledErr;
+    }
 
     return noErr;
 }
