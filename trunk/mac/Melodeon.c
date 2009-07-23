@@ -59,6 +59,35 @@ enum {
     kCommandLayout  = 'lay '
 };
 
+// HIView IDs
+
+HIViewID kHIViewIDReverse =
+    {kCommandReverse, 101};
+
+HIViewID kHIViewIDKey =
+    {kCommandKey, 102};
+
+// Key IDs
+
+enum {
+    kSpaceKey = 0x31,
+    kAKey     = 0x00,
+    kBKey     = 0x0b,
+    kCKey     = 0x08,
+    kDKey     = 0x02,
+    kEKey     = 0x0e,
+    kFKey     = 0x03,
+    kGKey     = 0x05,
+    kRKey     = 0x0f
+};
+
+// Function keys
+
+int keyCodes[] =
+    {0x7a, 0x78, 0x63, 0x76,
+     0x60, 0x61, 0x62, 0x64,
+     0x65, 0x6d, 0x67, 0x6f};
+
 // List of midi instruments
 
 char *instruments[] =
@@ -198,6 +227,7 @@ int volume = MAXVOL;
 
 OSStatus  KeyboardHandler(EventHandlerCallRef, EventRef, void*);
 OSStatus  CommandHandler(EventHandlerCallRef, EventRef, void*);
+OSStatus  ComboBoxHandler(EventHandlerCallRef, EventRef, void*);
 
 // Function main
 
@@ -283,7 +313,7 @@ int main(int argc, char *argv[])
     // Set visible and set command ID
 
     HIViewSetVisible(combo, true);
-    SetControlCommandID(combo, kCommandInst); 
+    HIViewSetCommandID(combo, kCommandInst); 
 
     // Place in the group box
 
@@ -315,9 +345,10 @@ int main(int argc, char *argv[])
     CreateCheckBoxControl(window, &bounds, CFSTR("Reverse Buttons"),
 			  FALSE, TRUE, &check);
 
-    // Set the control ID
+    // Set the control ID and the command ID
 
-    SetControlCommandID(check, kCommandReverse); 
+    HIViewSetID(check, kHIViewIDReverse);
+    HIViewSetCommandID(check, kCommandReverse); 
 
     // Place in the group box
 
@@ -351,7 +382,8 @@ int main(int argc, char *argv[])
     // Set visible and set command ID
 
     HIViewSetVisible(combo, true);
-    SetControlCommandID(combo, kCommandKey); 
+    HIViewSetID(combo, kHIViewIDKey);
+    HIViewSetCommandID(combo, kCommandKey); 
 
     // Place in the group box
 
@@ -399,7 +431,7 @@ int main(int argc, char *argv[])
 
     // Set command ID
 
-    SetControlCommandID(slider, kCommandVolume); 
+    HIViewSetCommandID(slider, kCommandVolume); 
 
     // Place in the group box
 
@@ -433,7 +465,7 @@ int main(int argc, char *argv[])
     // Set visible and set command ID
 
     HIViewSetVisible(combo, true);
-    SetControlCommandID(combo, kCommandLayout); 
+    HIViewSetCommandID(combo, kCommandLayout); 
 
     // Place in the group box
 
@@ -466,7 +498,7 @@ int main(int argc, char *argv[])
 
     // Set command ID
 
-    SetControlCommandID(quit, kHICommandQuit); 
+    HIViewSetCommandID(quit, kHICommandQuit); 
 
     // Place in the group box
 
@@ -631,8 +663,7 @@ int main(int argc, char *argv[])
     // Combo box events type spec
 
     EventTypeSpec comboBoxEvents[] =
-	{{kEventClassHIComboBox, kEventComboBoxListItemSelected},
-	 {kEventClassTextField, kEventTextAccepted}};
+	{{kEventClassHIComboBox, kEventComboBoxListItemSelected}};
 
     // Install event handler
 
@@ -661,7 +692,7 @@ int main(int argc, char *argv[])
 
     InstallApplicationEventHandler(NewEventHandlerUPP(KeyboardHandler),
 				   LENGTH(keyboardEvents), keyboardEvents,
-				   NULL, NULL);
+				   window, NULL);
 
     // Run the application event loop
 
@@ -683,46 +714,28 @@ OSStatus CommandHandler(EventHandlerCallRef next,
     // Get the command
 
     GetEventParameter(event, kEventParamDirectObject,
-		      typeHICommand, NULL, sizeof(HICommand),
+		      typeHICommand, NULL, sizeof(HICommandExtended),
 		      NULL, &command);
 
     // Get the value
 
-    value = GetControl32BitValue(command.source.control);
+    value = HIViewGetValue(command.source.control);
 
     // Switch on the command ID
 
     switch (command.commandID)
     {
-        // Intrument
-
-//     case kCommandInst:
-// 	instrument = HIViewGetValue(command.source.control);
-// 	break;
-
 	// Reverse
 
     case kCommandReverse:
 	reverse = value;
 	break;
 
-	// Key
-
-//     case kCommandKey:
-// 	key = HIViewGetValue(command.source.control);
-// 	break;
-
 	// Volume
 
     case kCommandVolume:
 	volume = value;
 	break;
-
-	// Layout
-
-//     case kCommandLayout:
-// 	layout = HIViewGetValue(command.source.control);
-// 	break;
 
         // Quit
 
@@ -733,30 +746,6 @@ OSStatus CommandHandler(EventHandlerCallRef next,
     default:
 	return eventNotHandledErr;
     }
-
-    union {
-	UInt32 command;
-	char buffer[5];
-    } id;
-
-    id.buffer[4] = '\0';
-    id.command = command.commandID;
-
-    CFStringRef message =
-	CFStringCreateWithFormat(NULL, NULL,
-				 CFSTR("Command = '%s', value = '%d'"),
-				 id.buffer, value);
-
-    DialogRef dialog;
-
-    // kAlertCautionAlert, kAlertPlainAlert
-
-    CreateStandardAlert(kAlertNoteAlert,
-			CFSTR("Command"),
-			message, NULL,
-			&dialog);
-
-    RunStandardAlert(dialog, NULL, NULL);
 
     // Report success
 
@@ -775,45 +764,48 @@ OSStatus ComboBoxHandler(EventHandlerCallRef next,
     // Get the control
 
     GetEventParameter(event, kEventParamDirectObject,
-		      typeControlRef, NULL, sizeof(combo),
+		      typeControlRef, NULL, sizeof(ControlRef),
 		      NULL, &combo);
+
+    // Get the index
+
+    GetEventParameter(event, kEventParamComboBoxListSelectedItemIndex,
+		      typeCFIndex, NULL, sizeof(CFIndex),
+		      NULL, &index);
 
     // Get the command id
 
-    GetControlCommandID(combo, &id);
+    HIViewGetCommandID(combo, &id);
 
-    switch (GetEventKind(event))
+    // Switch on the command id
+	
+    switch (id)
     {
-    case kEventComboBoxListItemSelected:
-	GetEventParameter(event, kEventParamComboBoxListItemSelectedItemIndex,
-			  typeCFIndex, NULL, sizeof(index),
-			  NULL, &index);
+	// Instrument
 
-	switch (id)
-	{
-	case kCommandInst:
-	    instrument = index;
-	    break;
-
-	case kCommandKey:
-	    key = index;
-	    break;
-
-	case kCommandLayout:
-	    layout = index;
-	    break;
-
-	default:
-	    return eventNotHandledErr;
-	}
+    case kCommandInst:
+	instrument = index;
 	break;
 
-    case kEventTextAccepted:
+	// Key
+
+    case kCommandKey:
+	key = index;
 	break;
+
+	// Layout
+
+    case kCommandLayout:
+	layout = index;
+	break;
+
+	// Something else
 
     default:
 	return eventNotHandledErr;
     }
+
+    // Report success
 
     return noErr;
 }
@@ -821,40 +813,136 @@ OSStatus ComboBoxHandler(EventHandlerCallRef next,
 // Keyboard handler
 
 OSStatus  KeyboardHandler(EventHandlerCallRef next,
-			  EventRef event, void *data)
+			  EventRef event, void *window)
 {
     UInt32 key;
-    char buffer[32];
-    char c;
+    UInt32 kind;
+
+    // Get the event kind
+
+    kind = GetEventKind(event);
 
     // Get the key code
 
     GetEventParameter(event, kEventParamKeyCode, typeUInt32,
 		      NULL, sizeof(key), NULL, &key);
 
-    GetEventParameter(event, kEventParamKeyMacCharCodes, typeChar,
-                      NULL, sizeof(c), NULL, &c);
+    Boolean found = FALSE;
+    int index;
+    char *s;
+    int i;
 
-    GetEventParameter(event, kEventParamKeyUnicodes, typeUnicodeText,
-                      NULL, sizeof(buffer), NULL, &buffer);
+    for (i = 0; i < LENGTH(keyCodes); i++)
+    {
+	if (keyCodes[i] == key)
+	{
+	    found = TRUE;
+	    index = i;
+	    break;
+	}
+    }
 
-    // kEventParamKeyCode
+    if (found)
+    {
+	switch (kind)
+	{
+	case kEventRawKeyDown:
+	    break;
 
-    CFStringRef message =
-	CFStringCreateWithFormat(NULL, NULL,
-				 CFSTR("Key = '%x', '%c', '%s'"),
-				 key, c, buffer);
+	case kEventRawKeyUp:
+	    break;
 
-    DialogRef dialog;
+	default:
+	    return eventNotHandledErr;
+	}
 
-    // kAlertCautionAlert, kAlertPlainAlert
+	return noErr;
+    }
 
-    CreateStandardAlert(kAlertNoteAlert,
-			CFSTR("Key"),
-			message, NULL,
-			&dialog);
+    HIViewRef control;
 
-    RunStandardAlert(dialog, NULL, NULL);
+    // Find the key combo box
+
+    HIViewFindByID(HIViewGetRoot((WindowRef) window),
+                   kHIViewIDKey,
+                   &control);
+
+    switch (kind)
+    {
+    case kEventRawKeyDown:
+	switch (key)
+	{
+	case kSpaceKey:
+	    return noErr;
+
+	default:
+	    return eventNotHandledErr;
+	}
+	break;
+
+    case kEventRawKeyUp:
+	switch (key)
+	{
+	case kSpaceKey:
+	    return noErr;
+
+	case kEKey:
+	    key = keyvals[0];
+	    HIViewSetText(control, CFSTR("Eb"));
+	    break;
+
+	case kBKey:
+	    key = keyvals[1];
+	    HIViewSetText(control, CFSTR("Bb"));
+	    break;
+
+	case kFKey:
+	    key = keyvals[2];
+	    HIViewSetText(control, CFSTR("F"));
+	    break;
+
+	case kCKey:
+	    key = keyvals[3];
+	    HIViewSetText(control, CFSTR("C"));
+	    break;
+
+	case kGKey:
+	    key = keyvals[4];
+	    HIViewSetText(control, CFSTR("G"));
+	    break;
+
+	case kDKey:
+	    key = keyvals[5];
+	    HIViewSetText(control, CFSTR("D"));
+	    break;
+
+	case kAKey:
+	    key = keyvals[6];
+	    HIViewSetText(control, CFSTR("A"));
+	    break;
+
+	case kRKey:
+
+	    // Find the reverse toggle
+
+	    HIViewFindByID(HIViewGetRoot((WindowRef) window),
+			   kHIViewIDReverse,
+			   &control);
+
+	    // Change the value
+
+	    reverse = !reverse;
+	    HIViewSetValue(control, reverse);
+	    return noErr;
+
+	default:
+	    return eventNotHandledErr;
+	}
+	break;
+
+    default:
+	return eventNotHandledErr;
+    }
 
     // Report success
 
