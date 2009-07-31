@@ -20,9 +20,11 @@
 //
 //  Bill Farmer  william j farmer [at] tiscali [dot] co [dot] uk.
 //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 #include <Carbon/Carbon.h>
+#include <AudioUnit/AudioUnit.h>
+#include <AudioToolbox/AudioToolbox.h>
 
 // Macros
 
@@ -56,8 +58,7 @@ enum {
     kCommandReverse = 'rvrs',
     kCommandKey     = 'key ',
     kCommandVolume  = 'vol ',
-    kCommandLayout  = 'lay '
-};
+    kCommandLayout  = 'lay '};
 
 // HIView IDs
 
@@ -78,15 +79,39 @@ enum {
     kEKey     = 0x0e,
     kFKey     = 0x03,
     kGKey     = 0x05,
-    kRKey     = 0x0f
-};
+    kRKey     = 0x0f};
 
-// Function keys
+// Function keys F1-F12
 
 int keyCodes[] =
     {0x7a, 0x78, 0x63, 0x76,
      0x60, 0x61, 0x62, 0x64,
      0x65, 0x6d, 0x67, 0x6f};
+
+// Keyboard modifiers
+
+enum {
+    kKeyboardCommandMask = 0x0100,
+    kKeyboardShiftMask   = 0x0200,
+    kKeyboardOptionMask  = 0x0800,
+    kKeyboardControlMask = 0x1000};
+
+// Midi codes
+
+enum {
+    kMidiMessageNoteOn        = 0x90,
+    kMidiMessageNoteOff       = 0x80,
+    kMidiMessageBassOn        = 0x91,
+    kMidiMessageBassOff       = 0x81,
+    kMidiMessageChordOn       = 0x92,
+    kMidiMessageChordOff      = 0x82,
+    kMidiMessageProgramChange = 0xC0};
+
+// Status text
+
+CFStringRef statusText =
+    CFSTR("Press the function keys F1-F12 as melodeon buttons "
+          "and the space bar as the bellows. 4th button start.");
 
 // List of midi instruments
 
@@ -200,13 +225,17 @@ int chord[LENGTH(keys)][2][2] =
      {{62, 69}, {69, 64}},
      {{69, 64}, {64, 71}}};
 #endif
+// Synthesizer unit
+
+AudioUnit synthUnit;
+
 // Buttons
 
 Boolean buttons[BUTTONS];
 ControlRef display[BUTTONS];
 #ifdef BASSBUTTONS
 Boolean control;
-Boolean alt;
+Boolean command;
 
 ControlRef bassdisp[2];
 #endif
@@ -217,7 +246,7 @@ Boolean bellows;
 
 // Reverse value
 
-Boolean reverse = FALSE;
+Boolean reverse = false;
 
 // Volume value
 
@@ -241,6 +270,7 @@ int main(int argc, char *argv[])
     ControlRef text;
     ControlRef slider;
     ControlRef quit;
+    MenuRef menu;
     HIRect rect;
     int i;
 
@@ -251,19 +281,33 @@ int main(int argc, char *argv[])
     // Create window
 
     CreateNewWindow(kDocumentWindowClass,
-		    kWindowStandardFloatingAttributes |
-		    kWindowStandardHandlerAttribute |
-		    kWindowCompositingAttribute,
-		    &bounds, &window);
+                    kWindowStandardFloatingAttributes |
+                    kWindowStandardHandlerAttribute |
+		    kWindowInWindowMenuAttribute |
+                    kWindowCompositingAttribute,
+                    &bounds, &window);
 
     // Set the title
 
     SetWindowTitleWithCFString(window, CFSTR("Melodeon"));
 
+    // Create a window menu
+
+    CreateStandardWindowMenu(0, &menu);
+
+    // Insert the menu
+
+    InsertMenu(menu, 0);
+
+//     menu = GetMenuRef(kMenuStdMenuProc);
+//     printf("menu = %x\n", menu);
+//     InsertMenuItemTextWithCFString(menu, CFSTR("About Melodeon"),
+//                                    0, 0, kHICommandAbout);
+
     // Show and position the window
 
-    RepositionWindow(window, NULL, kWindowCascadeOnMainScreen);
     ShowWindow(window);
+    RepositionWindow(window, NULL, kWindowCascadeOnMainScreen);
 
     // Find the window content
 
@@ -278,7 +322,7 @@ int main(int argc, char *argv[])
 
     // Create group box
 
-    CreateGroupBoxControl(window, &bounds, NULL, TRUE, &group);
+    CreateGroupBoxControl(window, &bounds, NULL, true, &group);
 
     // Place in the window
 
@@ -326,8 +370,8 @@ int main(int argc, char *argv[])
     {
         HIComboBoxAppendTextItem(combo,
             CFStringCreateWithCString(kCFAllocatorDefault,
-				      instruments[i],
-				      kCFStringEncodingMacRoman), NULL);
+                                      instruments[i],
+                                      kCFStringEncodingMacRoman), NULL);
 
         // Set the current instrument
 
@@ -343,7 +387,7 @@ int main(int argc, char *argv[])
     // Create check box
 
     CreateCheckBoxControl(window, &bounds, CFSTR("Reverse Buttons"),
-			  FALSE, TRUE, &check);
+                          false, true, &check);
 
     // Set the control ID and the command ID
 
@@ -396,12 +440,12 @@ int main(int argc, char *argv[])
     {
         HIComboBoxAppendTextItem(combo,
             CFStringCreateWithCString(kCFAllocatorDefault,
-				      keys[i],
-				      kCFStringEncodingMacRoman), NULL);
+                                      keys[i],
+                                      kCFStringEncodingMacRoman), NULL);
 
         // Set current key
 
-    	if (strcmp(keys[i], "C") == 0)
+        if (strcmp(keys[i], "C") == 0)
             key = i;
     }
 
@@ -427,7 +471,7 @@ int main(int argc, char *argv[])
     // Create slider
 
     CreateSliderControl(window, &bounds, MAXVOL, 0, MAXVOL,
-			kControlSliderDoesNotPoint, 0, FALSE, NULL, &slider);
+                        kControlSliderDoesNotPoint, 0, false, NULL, &slider);
 
     // Set command ID
 
@@ -478,12 +522,12 @@ int main(int argc, char *argv[])
     {
         HIComboBoxAppendTextItem(combo,
             CFStringCreateWithCString(kCFAllocatorDefault,
-				      layouts[i],
-				      kCFStringEncodingMacRoman), NULL);
+                                      layouts[i],
+                                      kCFStringEncodingMacRoman), NULL);
 
         // Set current layout
 
-    	if (strcmp(layouts[i], "Hohner") == 0)
+        if (strcmp(layouts[i], "Hohner") == 0)
             layout = i;
     }
 
@@ -512,7 +556,7 @@ int main(int argc, char *argv[])
 
     // Create group box
 
-    CreateGroupBoxControl(window, &bounds, NULL, TRUE, &group);
+    CreateGroupBoxControl(window, &bounds, NULL, true, &group);
 
     // Place in the window
 
@@ -564,7 +608,7 @@ int main(int argc, char *argv[])
 
     // Create group box
 
-    CreateGroupBoxControl(window, &bounds, NULL, TRUE, &group);
+    CreateGroupBoxControl(window, &bounds, NULL, true, &group);
 
     // Place in the window
 
@@ -579,9 +623,9 @@ int main(int argc, char *argv[])
     // Create space bar
 
     CreateBevelButtonControl(window, &bounds, NULL,
-			     kControlBevelButtonNormalBevel,
-			     kControlBehaviorPushbutton,
-			     NULL, 0, 0, 0, &spacebar);
+                             kControlBevelButtonNormalBevel,
+                             kControlBehaviorPushbutton,
+                             NULL, 0, 0, 0, &spacebar);
 
     // Place in the group box
 
@@ -630,7 +674,7 @@ int main(int argc, char *argv[])
 
     // Create group box for fake status bar
 
-    CreateGroupBoxControl(window, &bounds, NULL, FALSE, &group);
+    CreateGroupBoxControl(window, &bounds, NULL, false, &group);
 
     // Place in window at negative offset to hide rounded corners
 
@@ -650,10 +694,7 @@ int main(int argc, char *argv[])
 
     // Create static text
 
-    CreateStaticTextControl(window, &bounds,
-                            CFSTR("Press the function keys F1-F12 as melodeon buttons "
-                                  "and the space bar as the bellows. 4th button start."),
-                            &style, &text);
+    CreateStaticTextControl(window, &bounds, statusText, &style, &text);
 
     // Place in group box
 
@@ -663,13 +704,13 @@ int main(int argc, char *argv[])
     // Combo box events type spec
 
     EventTypeSpec comboBoxEvents[] =
-	{{kEventClassHIComboBox, kEventComboBoxListItemSelected}};
+        {{kEventClassHIComboBox, kEventComboBoxListItemSelected}};
 
     // Install event handler
 
     InstallApplicationEventHandler(NewEventHandlerUPP(ComboBoxHandler),
-				   LENGTH(comboBoxEvents), comboBoxEvents,
-				   NULL, NULL);
+                                   LENGTH(comboBoxEvents), comboBoxEvents,
+                                   NULL, NULL);
 
     // Command events type spec
 
@@ -679,24 +720,104 @@ int main(int argc, char *argv[])
     // Install event handler
 
     InstallApplicationEventHandler(NewEventHandlerUPP(CommandHandler),
-				   LENGTH(commandEvents), commandEvents,
-				   NULL, NULL);
+                                   LENGTH(commandEvents), commandEvents,
+                                   NULL, NULL);
 
     // Keyboard events type spec
 
     EventTypeSpec keyboardEvents[] =
         {{kEventClassKeyboard, kEventRawKeyDown},
-	 {kEventClassKeyboard, kEventRawKeyUp}};
+         {kEventClassKeyboard, kEventRawKeyUp},
+         {kEventClassKeyboard, kEventRawKeyModifiersChanged}};
 
     // Install event handler
 
     InstallApplicationEventHandler(NewEventHandlerUPP(KeyboardHandler),
-				   LENGTH(keyboardEvents), keyboardEvents,
-				   window, NULL);
+                                   LENGTH(keyboardEvents), keyboardEvents,
+                                   NULL, NULL);
+
+    // AU graph
+
+    AUGraph graph;
+
+    // Synthesizer and output node
+
+    AUNode synthNode;
+    AUNode outNode;
+
+    // Component description
+
+    ComponentDescription cd;
+    cd.componentManufacturer = kAudioUnitManufacturer_Apple;
+    cd.componentFlags = 0;
+    cd.componentFlagsMask = 0;
+
+    // New AU graph
+
+    NewAUGraph(&graph);
+
+    // Synthesizer
+
+    cd.componentType = kAudioUnitType_MusicDevice;
+    cd.componentSubType = kAudioUnitSubType_DLSSynth;
+
+    // New node
+
+    AUGraphNewNode(graph, &cd, 0, NULL, &synthNode);
+
+    // Output
+
+    cd.componentType = kAudioUnitType_Output;
+    cd.componentSubType = kAudioUnitSubType_DefaultOutput;
+ 
+    // New node
+
+    AUGraphNewNode(graph, &cd, 0, NULL, &outNode);
+
+    // Open graph
+
+    AUGraphOpen(graph);
+
+    // Connect nodes
+
+    AUGraphConnectNodeInput(graph, synthNode, 0, outNode, 0);
+
+    // Get a synth unit
+
+    AUGraphGetNodeInfo(graph, synthNode, NULL, 0, NULL, &synthUnit);
+
+    // Initialise
+
+    AUGraphInitialize(graph);
+
+    // Start
+
+    AUGraphStart(graph);
+
+    // Show the graph
+
+//     CAShow(graph);
+
+    // Set instrument
+
+    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 0,
+                         instrument, 0, 0);
+    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 1,
+                         instrument, 0, 0);
+    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 2,
+                         instrument, 0, 0);
 
     // Run the application event loop
 
     RunApplicationEventLoop();
+
+    // Stop the graph
+
+    AUGraphStop(graph);
+
+    // Dispose of the graph
+
+    DisposeAUGraph(graph);
 
     // Exit
 
@@ -706,7 +827,7 @@ int main(int argc, char *argv[])
 // Control handler
 
 OSStatus CommandHandler(EventHandlerCallRef next,
-			EventRef event, void *data)
+                        EventRef event, void *data)
 {
     HICommandExtended command;
     UInt32 value;
@@ -714,8 +835,8 @@ OSStatus CommandHandler(EventHandlerCallRef next,
     // Get the command
 
     GetEventParameter(event, kEventParamDirectObject,
-		      typeHICommand, NULL, sizeof(HICommandExtended),
-		      NULL, &command);
+                      typeHICommand, NULL, sizeof(command),
+                      NULL, &command);
 
     // Get the value
 
@@ -725,26 +846,26 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 
     switch (command.commandID)
     {
-	// Reverse
+        // Reverse
 
     case kCommandReverse:
-	reverse = value;
-	break;
+        reverse = value;
+        break;
 
-	// Volume
+        // Volume
 
     case kCommandVolume:
-	volume = value;
-	break;
+        volume = value;
+        break;
 
         // Quit
 
     case kHICommandQuit:
 
-	// Let the default handler handle it
+        // Let the default handler handle it
 
     default:
-	return eventNotHandledErr;
+        return eventNotHandledErr;
     }
 
     // Report success
@@ -755,7 +876,7 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 // Combo box handler
 
 OSStatus ComboBoxHandler(EventHandlerCallRef next,
-			 EventRef event, void *data)
+                         EventRef event, void *data)
 {
     ControlRef combo;
     CFIndex index;
@@ -764,45 +885,45 @@ OSStatus ComboBoxHandler(EventHandlerCallRef next,
     // Get the control
 
     GetEventParameter(event, kEventParamDirectObject,
-		      typeControlRef, NULL, sizeof(ControlRef),
-		      NULL, &combo);
+                      typeControlRef, NULL, sizeof(combo),
+                      NULL, &combo);
 
     // Get the index
 
     GetEventParameter(event, kEventParamComboBoxListSelectedItemIndex,
-		      typeCFIndex, NULL, sizeof(CFIndex),
-		      NULL, &index);
+                      typeCFIndex, NULL, sizeof(index),
+                      NULL, &index);
 
     // Get the command id
 
     HIViewGetCommandID(combo, &id);
 
     // Switch on the command id
-	
+        
     switch (id)
     {
-	// Instrument
+        // Instrument
 
     case kCommandInst:
-	instrument = index;
-	break;
+        instrument = index;
+        break;
 
-	// Key
+        // Key
 
     case kCommandKey:
-	key = index;
-	break;
+        key = index;
+        break;
 
-	// Layout
+        // Layout
 
     case kCommandLayout:
-	layout = index;
-	break;
+        layout = index;
+        break;
 
-	// Something else
+        // Something else
 
     default:
-	return eventNotHandledErr;
+        return eventNotHandledErr;
     }
 
     // Report success
@@ -813,135 +934,242 @@ OSStatus ComboBoxHandler(EventHandlerCallRef next,
 // Keyboard handler
 
 OSStatus  KeyboardHandler(EventHandlerCallRef next,
-			  EventRef event, void *window)
+                          EventRef event, void *data)
 {
-    UInt32 key;
     UInt32 kind;
+    UInt32 keycode;
+    UInt32 modifiers;
 
     // Get the event kind
 
     kind = GetEventKind(event);
 
-    // Get the key code
+    // Switch on event kind
 
-    GetEventParameter(event, kEventParamKeyCode, typeUInt32,
-		      NULL, sizeof(key), NULL, &key);
+    switch (kind)
+    {
+        // Modifiers changed
 
-    Boolean found = FALSE;
-    int index;
+    case kEventRawKeyModifiersChanged:
+
+	// Get the modifiers
+
+	GetEventParameter(event, kEventParamKeyModifiers, typeUInt32,
+			  NULL, sizeof(modifiers), NULL, &modifiers);
+
+        if (modifiers & kKeyboardControlMask)
+        {
+	    control = true;
+            HIViewSetValue(bassdisp[0], true);
+
+	    int note = bass[key][bellows];
+	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOn,
+				 note, volume, 0);
+        }
+
+        else
+        {
+	    control = false;
+	    HIViewSetValue(bassdisp[0], false);
+
+ 	    int note = bass[key][bellows];
+	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOff,
+				 note, 0, 0);
+        }
+
+        if (modifiers & kKeyboardCommandMask)
+	{
+	    command = true;
+            HIViewSetValue(bassdisp[1], true);
+
+	    int note = chord[key][0][bellows];
+	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOn,
+				 note, volume, 0);
+	    note = chord[key][1][bellows];
+	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOn,
+				 note, volume, 0);
+	}
+
+        else
+	{
+	    command = false;
+            HIViewSetValue(bassdisp[1], false);
+
+	    int note = chord[key][0][bellows];
+	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+				 note, 0, 0);
+	    note = chord[key][1][bellows];
+	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+				 note, 0, 0);
+	}
+
+        return noErr;
+
+	// Key down or key up
+
+    case kEventRawKeyDown:
+    case kEventRawKeyUp:
+
+        // Get the key code
+
+        GetEventParameter(event, kEventParamKeyCode, typeUInt32,
+                          NULL, sizeof(keycode), NULL, &keycode);
+        break;
+
+    default:
+        return eventNotHandledErr;
+    }
+
+    Boolean found = false;
+    int i, n, m;
     char *s;
-    int i;
 
     for (i = 0; i < LENGTH(keyCodes); i++)
     {
-	if (keyCodes[i] == key)
-	{
-	    found = TRUE;
-	    index = i;
-	    break;
-	}
+        if (keyCodes[i] == keycode)
+        {
+            found = true;
+            n = reverse? LENGTH(display) - i - 1: i;
+            m = reverse? i: LENGTH(display) - i - 1;
+            break;
+        }
     }
 
     if (found)
     {
-	switch (kind)
-	{
-	case kEventRawKeyDown:
-	    break;
+        switch (kind)
+        {
+        case kEventRawKeyDown:
+            if (!buttons[n])
+            {
+                buttons[n] = true;
+                HIViewSetValue(display[n], true);
 
-	case kEventRawKeyUp:
-	    break;
+		int note = notes[layout][m][bellows] + keyvals[key];
+		MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOn,
+				     note, volume, 0);
+            }
+            break;
 
-	default:
-	    return eventNotHandledErr;
-	}
+        case kEventRawKeyUp:
+            if (buttons[n])
+            {
+                buttons[n] = false;
+                HIViewSetValue(display[n], false);
 
-	return noErr;
+		int note = notes[layout][m][bellows] + keyvals[key];
+		MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOff,
+				     note, 0, 0);
+            }
+            break;
+
+        default:
+            return eventNotHandledErr;
+        }
+
+        return noErr;
     }
 
+    // Window and control
+
+    WindowRef window;
     HIViewRef control;
+
+    // Get the window
+    
+    window = ActiveNonFloatingWindow();
 
     // Find the key combo box
 
-    HIViewFindByID(HIViewGetRoot((WindowRef) window),
+    HIViewFindByID(HIViewGetRoot(window),
                    kHIViewIDKey,
                    &control);
 
     switch (kind)
     {
     case kEventRawKeyDown:
-	switch (key)
-	{
-	case kSpaceKey:
-	    return noErr;
+        switch (keycode)
+        {
+        case kSpaceKey:
+            if (!bellows)
+            {
+                bellows = true;
+                HIViewSetValue(spacebar, true);
+            }
+            break;
 
-	default:
-	    return eventNotHandledErr;
-	}
-	break;
+        default:
+            return eventNotHandledErr;
+        }
+        break;
 
     case kEventRawKeyUp:
-	switch (key)
-	{
-	case kSpaceKey:
-	    return noErr;
+        switch (keycode)
+        {
+        case kSpaceKey:
+            if (bellows)
+            {
+                bellows = false;
+                HIViewSetValue(spacebar, false);
+            }
+            break;
 
-	case kEKey:
-	    key = keyvals[0];
-	    HIViewSetText(control, CFSTR("Eb"));
-	    break;
+        case kEKey:
+            key = 0;
+            HIViewSetText(control, CFSTR("Eb"));
+            break;
 
-	case kBKey:
-	    key = keyvals[1];
-	    HIViewSetText(control, CFSTR("Bb"));
-	    break;
+        case kBKey:
+            key = 1;
+            HIViewSetText(control, CFSTR("Bb"));
+            break;
 
-	case kFKey:
-	    key = keyvals[2];
-	    HIViewSetText(control, CFSTR("F"));
-	    break;
+        case kFKey:
+            key = 2;
+            HIViewSetText(control, CFSTR("F"));
+            break;
 
-	case kCKey:
-	    key = keyvals[3];
-	    HIViewSetText(control, CFSTR("C"));
-	    break;
+        case kCKey:
+            key = 3;
+            HIViewSetText(control, CFSTR("C"));
+            break;
 
-	case kGKey:
-	    key = keyvals[4];
-	    HIViewSetText(control, CFSTR("G"));
-	    break;
+        case kGKey:
+            key = 4;
+            HIViewSetText(control, CFSTR("G"));
+            break;
 
-	case kDKey:
-	    key = keyvals[5];
-	    HIViewSetText(control, CFSTR("D"));
-	    break;
+        case kDKey:
+            key = 5;
+            HIViewSetText(control, CFSTR("D"));
+            break;
 
-	case kAKey:
-	    key = keyvals[6];
-	    HIViewSetText(control, CFSTR("A"));
-	    break;
+        case kAKey:
+            key = 6;
+            HIViewSetText(control, CFSTR("A"));
+            break;
 
-	case kRKey:
+        case kRKey:
 
-	    // Find the reverse toggle
+            // Find the reverse toggle
 
-	    HIViewFindByID(HIViewGetRoot((WindowRef) window),
-			   kHIViewIDReverse,
-			   &control);
+            HIViewFindByID(HIViewGetRoot(window),
+                           kHIViewIDReverse,
+                           &control);
 
-	    // Change the value
+            // Change the value
 
-	    reverse = !reverse;
-	    HIViewSetValue(control, reverse);
-	    return noErr;
+            reverse = !reverse;
+            HIViewSetValue(control, reverse);
+            break;
 
-	default:
-	    return eventNotHandledErr;
-	}
-	break;
+        default:
+            return eventNotHandledErr;
+        }
+        break;
 
     default:
-	return eventNotHandledErr;
+        return eventNotHandledErr;
     }
 
     // Report success
