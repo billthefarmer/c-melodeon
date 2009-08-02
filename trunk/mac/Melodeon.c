@@ -96,7 +96,7 @@ enum {
     kKeyboardOptionMask  = 0x0800,
     kKeyboardControlMask = 0x1000};
 
-// Midi codes
+// Midi messages
 
 enum {
     kMidiMessageNoteOn        = 0x90,
@@ -105,7 +105,15 @@ enum {
     kMidiMessageBassOff       = 0x81,
     kMidiMessageChordOn       = 0x92,
     kMidiMessageChordOff      = 0x82,
+    kMidiMessageControlChange = 0xB0,
     kMidiMessageProgramChange = 0xC0};
+
+// Midi control codes
+
+enum {
+    kMidiControlAllSoundOff  = 0x78,
+    kMidiResetAllControllers = 0x79,
+    kMidiControlAllNotesOff  = 0x7B};
 
 // Status text
 
@@ -232,16 +240,16 @@ AudioUnit synthUnit;
 // Buttons
 
 Boolean buttons[BUTTONS];
-ControlRef display[BUTTONS];
+HIViewRef display[BUTTONS];
 #ifdef BASSBUTTONS
 Boolean control;
 Boolean command;
 
-ControlRef bassdisp[2];
+HIViewRef bassdisp[2];
 #endif
 // Bellows handle
 
-ControlRef spacebar;
+HIViewRef spacebar;
 Boolean bellows;
 
 // Reverse value
@@ -254,9 +262,12 @@ int volume = MAXVOL;
 
 // Function prototypes
 
-OSStatus  KeyboardHandler(EventHandlerCallRef, EventRef, void*);
-OSStatus  CommandHandler(EventHandlerCallRef, EventRef, void*);
-OSStatus  ComboBoxHandler(EventHandlerCallRef, EventRef, void*);
+OSStatus ApplicationHandler(EventHandlerCallRef, EventRef, void*);
+OSStatus KeyboardHandler(EventHandlerCallRef, EventRef, void*);
+OSStatus ComboBoxHandler(EventHandlerCallRef, EventRef, void*);
+OSStatus CommandHandler(EventHandlerCallRef, EventRef, void*);
+
+void ChangeInstrument(int);
 
 // Function main
 
@@ -265,11 +276,11 @@ int main(int argc, char *argv[])
     WindowRef window;
     HIViewRef content;
     HIViewRef combo;
-    ControlRef group;
-    ControlRef check;
-    ControlRef text;
-    ControlRef slider;
-    ControlRef quit;
+    HIViewRef group;
+    HIViewRef check;
+    HIViewRef text;
+    HIViewRef slider;
+    HIViewRef quit;
     MenuRef menu;
     HIRect rect;
     int i;
@@ -291,18 +302,22 @@ int main(int argc, char *argv[])
 
     SetWindowTitleWithCFString(window, CFSTR("Melodeon"));
 
-    // Create a window menu
+    // Create a standard window menu
 
     CreateStandardWindowMenu(0, &menu);
+
+    // It would be nice to have an 'About Melodeon' item on the
+    // application menu which you get regardless, as it should be, but
+    // the documentation offers no clue as to how to achieve this,
+    // other than by building the whole thing from scratch. As this
+    // application has no use for a menu, I'm not going there.
+
+//    InsertMenuItemTextWithCFString(menu, CFSTR("About Melodeon"),
+//                                   0, 0, kHICommandAbout);
 
     // Insert the menu
 
     InsertMenu(menu, 0);
-
-//     menu = GetMenuRef(kMenuStdMenuProc);
-//     printf("menu = %x\n", menu);
-//     InsertMenuItemTextWithCFString(menu, CFSTR("About Melodeon"),
-//                                    0, 0, kHICommandAbout);
 
     // Show and position the window
 
@@ -701,6 +716,17 @@ int main(int argc, char *argv[])
     HIViewAddSubview(group, text);
     HIViewPlaceInSuperviewAt(text, 0, 2);
 
+    // Application events type spec
+
+    EventTypeSpec applicationEvents[] =
+        {{kEventClassApplication, kEventAppFrontSwitched}};
+
+    // Install event handler
+
+    InstallApplicationEventHandler(NewEventHandlerUPP(ApplicationHandler),
+                                   LENGTH(applicationEvents), applicationEvents,
+                                   NULL, NULL);
+
     // Combo box events type spec
 
     EventTypeSpec comboBoxEvents[] =
@@ -761,7 +787,7 @@ int main(int argc, char *argv[])
     cd.componentType = kAudioUnitType_MusicDevice;
     cd.componentSubType = kAudioUnitSubType_DLSSynth;
 
-    // New node
+    // New synthesizer node
 
     AUGraphNewNode(graph, &cd, 0, NULL, &synthNode);
 
@@ -770,7 +796,7 @@ int main(int argc, char *argv[])
     cd.componentType = kAudioUnitType_Output;
     cd.componentSubType = kAudioUnitSubType_DefaultOutput;
  
-    // New node
+    // New output node
 
     AUGraphNewNode(graph, &cd, 0, NULL, &outNode);
 
@@ -778,11 +804,11 @@ int main(int argc, char *argv[])
 
     AUGraphOpen(graph);
 
-    // Connect nodes
+    // Connect synthesizer node to output node
 
     AUGraphConnectNodeInput(graph, synthNode, 0, outNode, 0);
 
-    // Get a synth unit
+    // Get a synthesizer unit
 
     AUGraphGetNodeInfo(graph, synthNode, NULL, 0, NULL, &synthUnit);
 
@@ -798,14 +824,9 @@ int main(int argc, char *argv[])
 
 //     CAShow(graph);
 
-    // Set instrument
+    // Change instrument
 
-    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 0,
-                         instrument, 0, 0);
-    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 1,
-                         instrument, 0, 0);
-    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 2,
-                         instrument, 0, 0);
+    ChangeInstrument(instrument);
 
     // Run the application event loop
 
@@ -822,6 +843,113 @@ int main(int argc, char *argv[])
     // Exit
 
     return 0;
+}
+
+// Window Handler
+
+OSStatus ApplicationHandler(EventHandlerCallRef next,
+                            EventRef event, void *data)
+{
+    ProcessSerialNumber them;
+    ProcessSerialNumber us;
+    Boolean same;
+    UInt32 kind;
+    int i;
+
+    // Get event kind
+
+    kind = GetEventKind(event);
+
+    // switch on event kind
+
+    switch (kind)
+    {
+	// Front app switched
+
+    case kEventAppFrontSwitched:
+
+        // Get their process id
+
+        GetEventParameter(event, kEventParamProcessID,
+                          typeProcessSerialNumber, NULL, sizeof(them),
+                          NULL, &them);
+
+        // Get our process id
+
+        GetCurrentProcess(&us);
+
+        // Is it the same?
+
+        SameProcess(&them, &us, &same);
+
+        // If not the same
+
+        if (!same)
+        {
+            // Turn all the notes off and reset all the buttons that
+            // are down
+#ifdef BASSBUTTONS
+            if (control)
+            {
+                // Control button
+
+                control = false;
+                HIViewSetValue(bassdisp[0], false);
+
+                int note = bass[key][bellows];
+                MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOff,
+                                     note, 0, 0);
+            }
+
+            if (command)
+            {
+                // Command button
+
+                command = false;
+                HIViewSetValue(bassdisp[1], false);
+
+                int note = chord[key][0][bellows];
+                MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+                                     note, 0, 0);
+                note = chord[key][1][bellows];
+                MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+                                     note, 0, 0);
+            }
+#endif
+            for (i = 0; i < LENGTH(buttons); i++)
+            {
+                // Melody buttons
+
+                if (buttons[i])
+                {
+                    int j = LENGTH(buttons) - i - 1;
+
+                    buttons[i] = false;
+                    HIViewSetValue(display[j], false);
+
+                    int note = notes[layout][i][bellows] + keyvals[key];
+                    MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOff,
+                                         note, 0, 0);
+                }
+            }
+
+            if (bellows)
+            {
+                // Space bar button
+
+                bellows = false;
+                HIViewSetValue(spacebar, false);
+            }
+        }
+        break;
+
+    default:
+        return eventNotHandledErr;
+    }
+
+    // Return ok
+
+    return noErr;
 }
 
 // Control handler
@@ -878,7 +1006,7 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 OSStatus ComboBoxHandler(EventHandlerCallRef next,
                          EventRef event, void *data)
 {
-    ControlRef combo;
+    HIViewRef combo;
     CFIndex index;
     UInt32 id;
 
@@ -906,6 +1034,7 @@ OSStatus ComboBoxHandler(EventHandlerCallRef next,
 
     case kCommandInst:
         instrument = index;
+        ChangeInstrument(instrument);
         break;
 
         // Key
@@ -926,6 +1055,17 @@ OSStatus ComboBoxHandler(EventHandlerCallRef next,
         return eventNotHandledErr;
     }
 
+    WindowRef window;
+
+    // Get the window
+    
+    window = ActiveNonFloatingWindow();
+
+    // Clear the keyboard focus, otherwise the focus stays on the
+    // combo box and makes it drop down when the user presses a key
+
+    ClearKeyboardFocus(window);
+
     // Report success
 
     return noErr;
@@ -937,7 +1077,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
                           EventRef event, void *data)
 {
     UInt32 kind;
-    UInt32 keycode;
+    UInt32 keyCode;
     UInt32 modifiers;
 
     // Get the event kind
@@ -951,7 +1091,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
         // Modifiers changed
 
     case kEventRawKeyModifiersChanged:
-
+#ifdef BASSBUTTONS
 	// Get the modifiers
 
 	GetEventParameter(event, kEventParamKeyModifiers, typeUInt32,
@@ -959,8 +1099,12 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 
         if (modifiers & kKeyboardControlMask)
         {
+            // Control key down
+
 	    control = true;
             HIViewSetValue(bassdisp[0], true);
+
+            // Play the bass note
 
 	    int note = bass[key][bellows];
 	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOn,
@@ -969,8 +1113,12 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 
         else
         {
+            // Control key up
+
 	    control = false;
 	    HIViewSetValue(bassdisp[0], false);
+
+            // Stop the bass note
 
  	    int note = bass[key][bellows];
 	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOff,
@@ -979,8 +1127,12 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 
         if (modifiers & kKeyboardCommandMask)
 	{
+            // Command key down
+
 	    command = true;
             HIViewSetValue(bassdisp[1], true);
+
+            // Play the chord
 
 	    int note = chord[key][0][bellows];
 	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOn,
@@ -992,8 +1144,12 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 
         else
 	{
+            // Command key up
+
 	    command = false;
             HIViewSetValue(bassdisp[1], false);
+
+            // Stop the chord
 
 	    int note = chord[key][0][bellows];
 	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
@@ -1002,7 +1158,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 	    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
 				 note, 0, 0);
 	}
-
+#endif
         return noErr;
 
 	// Key down or key up
@@ -1013,7 +1169,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
         // Get the key code
 
         GetEventParameter(event, kEventParamKeyCode, typeUInt32,
-                          NULL, sizeof(keycode), NULL, &keycode);
+                          NULL, sizeof(keyCode), NULL, &keyCode);
         break;
 
     default:
@@ -1024,40 +1180,61 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
     int i, n, m;
     char *s;
 
+    // Look up the key code in the function key table
+
     for (i = 0; i < LENGTH(keyCodes); i++)
     {
-        if (keyCodes[i] == keycode)
+        if (keyCodes[i] == keyCode)
         {
             found = true;
-            n = reverse? LENGTH(display) - i - 1: i;
-            m = reverse? i: LENGTH(display) - i - 1;
+
+            // Calculate the indexes
+
+            n = reverse? i: LENGTH(display) - i - 1;
+            m = reverse? LENGTH(display) - i - 1: i;
             break;
         }
     }
+
+    // If the key code is found
 
     if (found)
     {
         switch (kind)
         {
+            // Key down
+
         case kEventRawKeyDown:
+
+            // If the key isn't already down
+
             if (!buttons[n])
             {
                 buttons[n] = true;
-                HIViewSetValue(display[n], true);
+                HIViewSetValue(display[m], true);
 
-		int note = notes[layout][m][bellows] + keyvals[key];
+                // Play the note
+
+		int note = notes[layout][n][bellows] + keyvals[key];
 		MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOn,
 				     note, volume, 0);
             }
             break;
 
+            // Key up
+
         case kEventRawKeyUp:
+
+            // If the key isn't already up
+
             if (buttons[n])
             {
                 buttons[n] = false;
-                HIViewSetValue(display[n], false);
+                HIViewSetValue(display[m], false);
 
-		int note = notes[layout][m][bellows] + keyvals[key];
+                // Stop note
+
+		int note = notes[layout][n][bellows] + keyvals[key];
 		MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOff,
 				     note, 0, 0);
             }
@@ -1070,10 +1247,10 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
         return noErr;
     }
 
-    // Window and control
+    // Window and view
 
     WindowRef window;
-    HIViewRef control;
+    HIViewRef view;
 
     // Get the window
     
@@ -1083,18 +1260,87 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 
     HIViewFindByID(HIViewGetRoot(window),
                    kHIViewIDKey,
-                   &control);
+                   &view);
 
     switch (kind)
     {
+        // Key down
+
     case kEventRawKeyDown:
-        switch (keycode)
+        switch (keyCode)
         {
+            // Space bar
+
         case kSpaceKey:
+
+            // If the key isn't already down
+
             if (!bellows)
             {
                 bellows = true;
                 HIViewSetValue(spacebar, true);
+#ifdef BASSBUTTONS
+                // Control key is down
+
+		if (control)
+		{
+                    // Stop the current bass note
+
+		    int note = bass[key][!bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOff,
+					 note, 0, 0);
+
+                    // Play the new bass note
+
+		    note = bass[key][bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOn,
+					 note, volume, 0);
+		}
+
+                // Command key is down
+
+		if (command)
+		{
+                    // Stop the current chord
+
+		    int note = chord[key][0][!bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+					 note, 0, 0);
+		    note = chord[key][1][!bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+					 note, 0, 0);
+
+                    // Play the new chord
+
+		    note = chord[key][0][bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOn,
+					 note, volume, 0);
+		    note = chord[key][1][bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOn,
+					 note, volume, 0);
+		}
+#endif
+                // Check the function keys
+
+		for (i = 0; i < LENGTH(buttons); i++)
+		{
+                    // If a function key is down
+
+		    if (buttons[i])
+		    {
+                        // Stop the current note
+
+			int note = notes[layout][i][!bellows] + keyvals[key];
+			MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOff,
+					     note, 0, 0);
+
+                        // Play the new note
+
+                        note = notes[layout][i][bellows] + keyvals[key];
+			MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOn,
+					     note, volume, 0);
+		    }
+		}
             }
             break;
 
@@ -1103,51 +1349,136 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
         }
         break;
 
+        // Key up
+
     case kEventRawKeyUp:
-        switch (keycode)
+        switch (keyCode)
         {
+            // Space bar
+
         case kSpaceKey:
+
+            // If the key isn't already up
+
             if (bellows)
             {
                 bellows = false;
                 HIViewSetValue(spacebar, false);
+#ifdef BASSBUTTONS
+                // Control key is down
+
+		if (control)
+		{
+                    // Stop the current bass note
+
+		    int note = bass[key][!bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOff,
+					 note, 0, 0);
+
+                    // Play the new bass note
+
+		    note = bass[key][bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageBassOn,
+					 note, volume, 0);
+		}
+
+                // Command key is down
+
+		if (command)
+		{
+                    // Stop the current chord
+
+		    int note = chord[key][0][!bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+					 note, 0, 0);
+		    note = chord[key][1][!bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOff,
+					 note, 0, 0);
+
+                    // Play the new chord
+
+		    note = chord[key][0][bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOn,
+					 note, volume, 0);
+		    note = chord[key][1][bellows];
+		    MusicDeviceMIDIEvent(synthUnit, kMidiMessageChordOn,
+					 note, volume, 0);
+		}
+#endif
+                // Check the function keys
+
+		for (i = 0; i < LENGTH(buttons); i++)
+		{
+                    // If a function key is down
+
+		    if (buttons[i])
+		    {
+                        // Stop the current note
+
+			int note = notes[layout][i][!bellows] + keyvals[key];
+			MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOff,
+					     note, 0, 0);
+
+                        // Play the new note
+
+			note = notes[layout][i][bellows] + keyvals[key];
+			MusicDeviceMIDIEvent(synthUnit, kMidiMessageNoteOn,
+					     note, volume, 0);
+		    }
+		}
             }
             break;
 
+            // E, change key to Eb
+
         case kEKey:
             key = 0;
-            HIViewSetText(control, CFSTR("Eb"));
+            HIViewSetText(view, CFSTR("Eb"));
             break;
+
+            // B, change key to Bb
 
         case kBKey:
             key = 1;
-            HIViewSetText(control, CFSTR("Bb"));
+            HIViewSetText(view, CFSTR("Bb"));
             break;
+
+            // F, change key to F
 
         case kFKey:
             key = 2;
-            HIViewSetText(control, CFSTR("F"));
+            HIViewSetText(view, CFSTR("F"));
             break;
+
+            // C, change key to C
 
         case kCKey:
             key = 3;
-            HIViewSetText(control, CFSTR("C"));
+            HIViewSetText(view, CFSTR("C"));
             break;
+
+            // G, change key to G
 
         case kGKey:
             key = 4;
-            HIViewSetText(control, CFSTR("G"));
+            HIViewSetText(view, CFSTR("G"));
             break;
+
+            // D, change key to D
 
         case kDKey:
             key = 5;
-            HIViewSetText(control, CFSTR("D"));
+            HIViewSetText(view, CFSTR("D"));
             break;
+
+            // A, change key to A
 
         case kAKey:
             key = 6;
-            HIViewSetText(control, CFSTR("A"));
+            HIViewSetText(view, CFSTR("A"));
             break;
+
+            // R, reverse the buttons
 
         case kRKey:
 
@@ -1155,12 +1486,12 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 
             HIViewFindByID(HIViewGetRoot(window),
                            kHIViewIDReverse,
-                           &control);
+                           &view);
 
             // Change the value
 
             reverse = !reverse;
-            HIViewSetValue(control, reverse);
+            HIViewSetValue(view, reverse);
             break;
 
         default:
@@ -1175,4 +1506,18 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
     // Report success
 
     return noErr;
+}
+
+// Change instrument
+
+void ChangeInstrument(int instrument)
+{
+    // Send a program change message on all three channels
+
+    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 0,
+                         instrument, 0, 0);
+    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 1,
+                         instrument, 0, 0);
+    MusicDeviceMIDIEvent(synthUnit, kMidiMessageProgramChange + 2,
+                         instrument, 0, 0);
 }
