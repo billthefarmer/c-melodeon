@@ -1,0 +1,81 @@
+{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf340
+{\fonttbl\f0\fswiss\fcharset77 Helvetica-Bold;\f1\fswiss\fcharset77 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww9600\viewh11200\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\qc\pardirnatural
+
+\f0\b\fs24 \cf0 Melodeon
+\f1\b0 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural
+\cf0 One row melodeon emulator with bass. Uses the standard keyboard\
+function keys F1-F12 as melodeon buttons, the Control and Command\
+ keys as bass buttons, and the space bar as the bellows. Unfortunately,\
+depending on your luck, your keyboard may not detect more than two\
+or three buttons pressed at once. I found an old keyboard worked much\
+better. You can see what is going on in the bottom half of the melodeon\
+window, which shows what keys the program thinks are pressed.\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
+
+\f0\b Controls
+\f1\b0 \
+\
+There are three drop down controls, a check box, a slider, and a\
+button in the top half of the window. The instruments drop down lets\
+you choose what midi instrument you would like to attempt to play. The\
+reverse check box lets you play widdershins. The key drop down lets\
+you choose a key to play in. There is a choice of Eb, Bb, F, C, G, D,\
+A. The key defaults to C. More kays can be added by popular request,\
+or you can hack the program yourself. The layout drop down lets you\
+choose a layout. The volume slider lets you change the volume. The\
+volume defaults to maximum. The quit button lets you give up, or you\
+can close the application from the menu. The key may be changed by\
+pressing the letter key corresponding to the desired playing key. The\
+buttons may be reversed by pressing the 'R' key.\
+\
+
+\f0\b Playing
+\f1\b0 \
+\
+Hold the keyboard in a vertical position, so the function keys are on\
+the side you want to play the melody on. Adjust the reverse check box\
+according to which hand you want to use. Press the keys as if they\
+were melodeon buttons, and press the space bar to emulate waggling\
+the bellows. If you don't know how to play melodeon see\
+http://info.melodeon.net.\
+\
+
+\f0\b Function keys
+\f1\b0 \
+\
+The function keys F9-F12 are defined by default in Keyboard and Mouse\
+Preferences, Keyboard Shortcuts as Dock, Expos\'8e and Dashboard. You\
+can disable this for the current session in Preferences, but F9 resets itself.\
+Also F12 ejects and closes the DVD drive. According to Apple, this is built\
+in and can't be changed.\
+
+\f0\b \
+Command-Space\
+
+\f1\b0 \
+This is defined in Keyboard Shortcuts as Spotlight. You can disable this.\
+
+\f0\b \
+Files
+\f1\b0 \
+\
+COPYING 			- Licence file\
+Makefile 				- Build file\
+Melodeon.c 			- Source file\
+Melodeon.app 			- Application\
+Melodeon.xcodeproj 	- Xcode project file\
+Readme.rtf 			- This file\
+\
+
+\f0\b Building
+\f1\b0 \
+\
+Use the Makefile with  GCC, or use Xcode to build. \
+}

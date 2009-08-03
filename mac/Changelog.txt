@@ -1,0 +1,16 @@
+Add code to clear keyboard focus from combo boxes when done, minor
+adjustments to layout and debugging. 03-Jul-09
+
+Add application handler to detect focus change and instrument change
+code. 02-Aug-09
+
+Add mac window menu and midi synthesizer code. 31-Jul-09
+
+Add more mac event handling code. Controls and alpha keys now
+working. 23-Jul-09
+
+Add mac combo box handler. 21-Jul-09
+
+Update mac event handling. 19-Jul-09
+
+Added mac folder and mac sources. 17-Jul-09
