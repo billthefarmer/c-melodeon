@@ -281,6 +281,7 @@ int main(int argc, char *argv[])
     HIViewRef text;
     HIViewRef slider;
     HIViewRef quit;
+
     MenuRef menu;
     HIRect rect;
     int i;
@@ -351,7 +352,8 @@ int main(int argc, char *argv[])
 
     // Create static text
 
-    CreateStaticTextControl(window, &bounds, CFSTR("Instrument:"), NULL, &text);
+    CreateStaticTextControl(window, &bounds, CFSTR("Instrument:"),
+			    NULL, &text);
 
     // Place in the group box
 
@@ -361,7 +363,7 @@ int main(int argc, char *argv[])
     // Bounds of combo box
 
     rect.size.height = 20;
-    rect.size.width = 160;    
+    rect.size.width = 168;    
 
     // Create combo box
 
@@ -373,11 +375,6 @@ int main(int argc, char *argv[])
 
     HIViewSetVisible(combo, true);
     HIViewSetCommandID(combo, kCommandInst); 
-
-    // Place in the group box
-
-    HIViewAddSubview(group, combo);
-    HIViewPlaceInSuperviewAt(combo, 100, 16);
 
     // Add the instruments
 
@@ -394,10 +391,15 @@ int main(int argc, char *argv[])
             instrument = i;
     }
 
+    // Place in the group box
+
+    HIViewAddSubview(group, combo);
+    HIViewPlaceInSuperviewAt(combo, 102, 16);
+
     // Bounds of check box
 
     bounds.bottom = 18;
-    bounds.right = 124;
+    bounds.right = 121;
 
     // Create check box
 
@@ -412,7 +414,7 @@ int main(int argc, char *argv[])
     // Place in the group box
 
     HIViewAddSubview(group, check);
-    HIViewPlaceInSuperviewAt(check, 290, 17);
+    HIViewPlaceInSuperviewAt(check, 286, 17);
 
     // Bounds of text
 
@@ -426,11 +428,11 @@ int main(int argc, char *argv[])
     // Place in the group box
 
     HIViewAddSubview(group, text);
-    HIViewPlaceInSuperviewAt(text, 430, 18);
+    HIViewPlaceInSuperviewAt(text, 420, 18);
 
     // Bounds of combo box
 
-    rect.size.width = 60;
+    rect.size.width = 70;
 
     // Create combo box
 
@@ -443,11 +445,6 @@ int main(int argc, char *argv[])
     HIViewSetVisible(combo, true);
     HIViewSetID(combo, kHIViewIDKey);
     HIViewSetCommandID(combo, kCommandKey); 
-
-    // Place in the group box
-
-    HIViewAddSubview(group, combo);
-    HIViewPlaceInSuperviewAt(combo, 470, 16);
 
     // Add keys
 
@@ -463,6 +460,11 @@ int main(int argc, char *argv[])
         if (strcmp(keys[i], "C") == 0)
             key = i;
     }
+
+    // Place in the group box
+
+    HIViewAddSubview(group, combo);
+    HIViewPlaceInSuperviewAt(combo, 460, 16);
 
     // Bounds of text
 
@@ -481,7 +483,7 @@ int main(int argc, char *argv[])
     // Bounds of slider
 
     bounds.bottom = 16;
-    bounds.right  = 160;
+    bounds.right  = 168;
 
     // Create slider
 
@@ -509,11 +511,11 @@ int main(int argc, char *argv[])
     // Place in the group box
 
     HIViewAddSubview(group, text);
-    HIViewPlaceInSuperviewAt(text, 290, 56);
+    HIViewPlaceInSuperviewAt(text, 286, 56);
 
     // Bounds of combo box
 
-    rect.size.width = 84;
+    rect.size.width = 98;
 
     // Create combo box
 
@@ -525,11 +527,6 @@ int main(int argc, char *argv[])
 
     HIViewSetVisible(combo, true);
     HIViewSetCommandID(combo, kCommandLayout); 
-
-    // Place in the group box
-
-    HIViewAddSubview(group, combo);
-    HIViewPlaceInSuperviewAt(combo, 352, 54);
 
     // Add layouts
 
@@ -546,10 +543,15 @@ int main(int argc, char *argv[])
             layout = i;
     }
 
+    // Place in the group box
+
+    HIViewAddSubview(group, combo);
+    HIViewPlaceInSuperviewAt(combo, 346, 54);
+
     // Bounds of push button
 
     bounds.bottom = 20;
-    bounds.right  = 60;
+    bounds.right  = 70;
 
     // Create push button
 
@@ -562,7 +564,7 @@ int main(int argc, char *argv[])
     // Place in the group box
 
     HIViewAddSubview(group, quit);
-    HIViewPlaceInSuperviewAt(quit, 471, 54);
+    HIViewPlaceInSuperviewAt(quit, 460, 54);
 
     // Group box bounds
 
@@ -762,11 +764,11 @@ int main(int argc, char *argv[])
                                    LENGTH(keyboardEvents), keyboardEvents,
                                    NULL, NULL);
 
-    // AU graph
+    // Audio Unit graph
 
     AUGraph graph;
 
-    // Synthesizer and output node
+    // Audio Unit synthesizer and output node
 
     AUNode synthNode;
     AUNode outNode;
@@ -845,7 +847,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-// Window Handler
+// Application Handler
 
 OSStatus ApplicationHandler(EventHandlerCallRef next,
                             EventRef event, void *data)
@@ -958,6 +960,7 @@ OSStatus CommandHandler(EventHandlerCallRef next,
                         EventRef event, void *data)
 {
     HICommandExtended command;
+    WindowRef window;
     UInt32 value;
 
     // Get the command
@@ -974,6 +977,28 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 
     switch (command.commandID)
     {
+        // Key, instrument, or layout control
+
+    case kCommandKey:
+    case kCommandInst:
+    case kCommandLayout:
+
+	// If the combo box list isn't visible (the user just closed
+	// it)
+
+        if (!HIComboBoxIsListVisible(command.source.control))
+        {            
+            // Get the window
+    
+            window = ActiveNonFloatingWindow();
+
+            // Clear the keyboard focus, otherwise the focus stays on the
+            // combo box and makes it drop down when the user presses a key
+
+            ClearKeyboardFocus(window);
+        }
+        break;
+
         // Reverse
 
     case kCommandReverse:
@@ -1097,7 +1122,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 	GetEventParameter(event, kEventParamKeyModifiers, typeUInt32,
 			  NULL, sizeof(modifiers), NULL, &modifiers);
 
-        if (modifiers & kKeyboardControlMask)
+        if ((modifiers & kKeyboardControlMask) && !control)
         {
             // Control key down
 
@@ -1111,7 +1136,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 				 note, volume, 0);
         }
 
-        else
+        if (!(modifiers & kKeyboardControlMask) && control)
         {
             // Control key up
 
@@ -1125,7 +1150,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 				 note, 0, 0);
         }
 
-        if (modifiers & kKeyboardCommandMask)
+        if ((modifiers & kKeyboardCommandMask) && !command)
 	{
             // Command key down
 
@@ -1142,7 +1167,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 				 note, volume, 0);
 	}
 
-        else
+        if (!(modifiers & kKeyboardCommandMask) && command)
 	{
             // Command key up
 
