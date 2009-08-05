@@ -24,3 +24,4 @@ There are several things to be done to get this emulator working on any given pl
  * I don't have a Mac. I have made a quick investigation into cross development on windows or linux, but it doesn't look hopeful.
  * I have discovered that it is possible to run versions of Mac OSX on a PC, so I am currently investigation development on a Hackintosh using Carbon.
  * I now have the mac version mainly working, debugging to go. I love the concert hall reverberation you get with the built in midi synthesizer without asking.
+ * Mac version released. You need to disable several keyboard shortcuts for the function keys to work.
