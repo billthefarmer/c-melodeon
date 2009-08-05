@@ -115,12 +115,6 @@ enum {
     kMidiResetAllControllers = 0x79,
     kMidiControlAllNotesOff  = 0x7B};
 
-// Status text
-
-CFStringRef statusText =
-    CFSTR("Press the function keys F1-F12 as melodeon buttons "
-          "and the space bar as the bellows. 4th button start.");
-
 // List of midi instruments
 
 char *instruments[] =
@@ -711,7 +705,10 @@ int main(int argc, char *argv[])
 
     // Create static text
 
-    CreateStaticTextControl(window, &bounds, statusText, &style, &text);
+    CreateStaticTextControl(window, &bounds,
+        CFSTR("Press the function keys F1-F12 as melodeon buttons "
+              "and the space bar as the bellows. 4th button start."),
+                            &style, &text);
 
     // Place in group box
 
