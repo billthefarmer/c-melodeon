@@ -71,15 +71,15 @@ HIViewID kHIViewIDKey =
 // Key IDs
 
 enum {
-    kSpaceKey = 0x31,
-    kAKey     = 0x00,
-    kBKey     = 0x0b,
-    kCKey     = 0x08,
-    kDKey     = 0x02,
-    kEKey     = 0x0e,
-    kFKey     = 0x03,
-    kGKey     = 0x05,
-    kRKey     = 0x0f};
+    kKeyboardSpaceKey = 0x31,
+    kKeyboardAKey     = 0x00,
+    kKeyboardBKey     = 0x0b,
+    kKeyboardCKey     = 0x08,
+    kKeyboardDKey     = 0x02,
+    kKeyboardEKey     = 0x0e,
+    kKeyboardFKey     = 0x03,
+    kKeyboardGKey     = 0x05,
+    kKeyboardRKey     = 0x0f};
 
 // Function keys F1-F12
 
@@ -260,6 +260,8 @@ OSStatus ApplicationHandler(EventHandlerCallRef, EventRef, void*);
 OSStatus KeyboardHandler(EventHandlerCallRef, EventRef, void*);
 OSStatus ComboBoxHandler(EventHandlerCallRef, EventRef, void*);
 OSStatus CommandHandler(EventHandlerCallRef, EventRef, void*);
+OSStatus WindowHandler(EventHandlerCallRef, EventRef, void*);
+OSStatus MouseHandler(EventHandlerCallRef, EventRef, void*);
 
 void ChangeInstrument(int);
 
@@ -726,6 +728,30 @@ int main(int argc, char *argv[])
                                    LENGTH(applicationEvents), applicationEvents,
                                    NULL, NULL);
 
+    // Mouse events type spec
+
+    EventTypeSpec mouseEvents[] =
+	{{kEventClassMouse, kEventMouseDown}};
+
+    // Install event handler on the event dispatcher, so that we can
+    // see mouse events before the default handler gets them
+
+    InstallEventHandler(GetEventDispatcherTarget(),
+                        NewEventHandlerUPP(MouseHandler),
+                        LENGTH(mouseEvents), mouseEvents,
+                        NULL, NULL);
+
+    // Window events type spec
+
+    EventTypeSpec windowEvents[] =
+        {{kEventClassWindow, kEventWindowClose}};
+
+    // Install event handler
+
+    InstallWindowEventHandler(window, NewEventHandlerUPP(WindowHandler),
+                              LENGTH(windowEvents), windowEvents,
+                              NULL, NULL);
+
     // Combo box events type spec
 
     EventTypeSpec comboBoxEvents[] =
@@ -951,7 +977,117 @@ OSStatus ApplicationHandler(EventHandlerCallRef next,
     return noErr;
 }
 
-// Control handler
+// Mouse handler
+
+OSStatus MouseHandler(EventHandlerCallRef next,
+		      EventRef event, void *data)
+{
+    HIViewRef control;
+    WindowRef window;
+    ControlKind view;
+    UInt32 kind;
+
+    // Get the event kind
+
+    kind = GetEventKind(event);
+
+    // Get the window
+
+    GetEventParameter(event, kEventParamWindowRef,
+                      typeWindowRef, NULL, sizeof(window),
+                      NULL, &window);
+
+    // Get the view
+
+    HIViewGetViewForMouseEvent(HIViewGetRoot(window), event,
+			       &control);
+
+    // Get the control kind
+
+    GetControlKind(control, &view);
+
+    // Switch on event kind
+
+    switch (kind)
+    {
+        // Mouse down
+
+    case kEventMouseDown:
+
+        // Switch on control kind
+
+        switch (view.kind)
+        {
+            // Combo box
+
+        case kControlKindHIComboBox:
+
+            // Do nothing, let the default event handler do it's thing
+
+            break;
+
+            // Everything else
+
+        default:
+
+            // Clear the keyboard focus, otherwise the focus stays on the
+            // combo box and makes it drop down when the user presses a key
+
+            ClearKeyboardFocus(window);
+            break;
+        }
+
+    default:
+        return eventNotHandledErr;
+    }
+
+    // Return event not handled so that the default event handler gets
+    // to do it's thing
+
+    return eventNotHandledErr;
+}
+
+// Window handler
+
+OSStatus WindowHandler(EventHandlerCallRef next,
+                       EventRef event, void *data)
+{
+    WindowRef window;
+    UInt32 kind;
+
+    // Get the event kind
+
+    kind = GetEventKind(event);
+
+    // Get the window
+
+    GetEventParameter(event, kEventParamDirectObject,
+                      typeWindowRef, NULL, sizeof(window),
+                      NULL, &window);
+
+    // Switch on event kind
+
+    switch (kind)
+    {
+        // Window close event
+
+    case kEventWindowClose:
+
+        // Quit the application, as it only has one window
+
+        QuitApplicationEventLoop();
+        break;
+
+    default:
+        return eventNotHandledErr;
+    }
+
+    // Return ok
+
+    return noErr;
+}
+
+// Command handler
 
 OSStatus CommandHandler(EventHandlerCallRef next,
                         EventRef event, void *data)
@@ -984,7 +1120,7 @@ OSStatus CommandHandler(EventHandlerCallRef next,
 	// it)
 
         if (!HIComboBoxIsListVisible(command.source.control))
-        {            
+        {
             // Get the window
     
             window = ActiveNonFloatingWindow();
@@ -1293,7 +1429,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
         {
             // Space bar
 
-        case kSpaceKey:
+        case kKeyboardSpaceKey:
 
             // If the key isn't already down
 
@@ -1378,7 +1514,7 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
         {
             // Space bar
 
-        case kSpaceKey:
+        case kKeyboardSpaceKey:
 
             // If the key isn't already up
 
@@ -1453,56 +1589,56 @@ OSStatus  KeyboardHandler(EventHandlerCallRef next,
 
             // E, change key to Eb
 
-        case kEKey:
+        case kKeyboardEKey:
             key = 0;
             HIViewSetText(view, CFSTR("Eb"));
             break;
 
             // B, change key to Bb
 
-        case kBKey:
+        case kKeyboardBKey:
             key = 1;
             HIViewSetText(view, CFSTR("Bb"));
             break;
 
             // F, change key to F
 
-        case kFKey:
+        case kKeyboardFKey:
             key = 2;
             HIViewSetText(view, CFSTR("F"));
             break;
 
             // C, change key to C
 
-        case kCKey:
+        case kKeyboardCKey:
             key = 3;
             HIViewSetText(view, CFSTR("C"));
             break;
 
             // G, change key to G
 
-        case kGKey:
+        case kKeyboardGKey:
             key = 4;
             HIViewSetText(view, CFSTR("G"));
             break;
 
             // D, change key to D
 
-        case kDKey:
+        case kKeyboardDKey:
             key = 5;
             HIViewSetText(view, CFSTR("D"));
             break;
 
             // A, change key to A
 
-        case kAKey:
+        case kKeyboardAKey:
             key = 6;
             HIViewSetText(view, CFSTR("A"));
             break;
 
             // R, reverse the buttons
 
-        case kRKey:
+        case kKeyboardRKey:
 
             // Find the reverse toggle
 
