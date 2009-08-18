@@ -3,7 +3,7 @@
 
 = Introduction =
 
-I have developed a Mac version.
+A Mac version has been released.
 
 http://melodeon.googlecode.com/files/Snapshot-Melodeon.png
 
@@ -13,7 +13,7 @@ There are several things to be done to get this emulator working on any given pl
 
  * Learn the gui for the platform, in this case there is a possibility of using Carbon.
 
- * Find out how to capture user keystrokes. This isn't necessarily as simple as it seems, as we are using the function keys, and the control and alt keys. In windows the F10 key goes somewhere different from the others. The keys may be different on a Mac for all I know.
+ * Find out how to capture user keystrokes. This isn't necessarily as simple as it seems, as we are using the function keys, and the control and command keys. In windows the F10 key goes somewhere different from the others. The keys may be different on a Mac for all I know.
 
  * Find out how to stop unwanted keyboard side effects, like alt-spacebar. I have done this in windows.
 
