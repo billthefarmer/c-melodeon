@@ -299,18 +299,28 @@ int main(int argc, char *argv[])
 
     SetWindowTitleWithCFString(window, CFSTR("Melodeon"));
 
+    // Create an application menu
+
+    CreateNewMenu(0, 0, &menu);
+
+    // Set menu title
+
+    SetMenuTitleWithCFString(menu,
+	CFStringCreateWithPascalString(kCFAllocatorDefault,
+                                       "\p\024",
+                                       kCFStringEncodingMacRoman));
+    // Create an about item
+
+    InsertMenuItemTextWithCFString(menu, CFSTR("About Melodeon"),
+                                   0, 0, kHICommandAbout);
+
+    // Insert the menu
+
+    InsertMenu(menu, 0);
+
     // Create a standard window menu
 
     CreateStandardWindowMenu(0, &menu);
-
-    // It would be nice to have an 'About Melodeon' item on the
-    // application menu which you get regardless, as it should be, but
-    // the documentation offers no clue as to how to achieve this,
-    // other than by building the whole thing from scratch. As this
-    // application has no use for a menu, I'm not going there.
-
-//    InsertMenuItemTextWithCFString(menu, CFSTR("About Melodeon"),
-//                                   0, 0, kHICommandAbout);
 
     // Insert the menu
 
@@ -781,11 +791,12 @@ int main(int argc, char *argv[])
          {kEventClassKeyboard, kEventRawKeyUp},
          {kEventClassKeyboard, kEventRawKeyModifiersChanged}};
 
-    // Install event handler
+    // Install event handler on the event dispatcher
 
-    InstallApplicationEventHandler(NewEventHandlerUPP(KeyboardHandler),
-                                   LENGTH(keyboardEvents), keyboardEvents,
-                                   NULL, NULL);
+    InstallEventHandler(GetEventDispatcherTarget(),
+			NewEventHandlerUPP(KeyboardHandler),
+			LENGTH(keyboardEvents), keyboardEvents,
+			NULL, NULL);
 
     // Audio Unit graph
 
