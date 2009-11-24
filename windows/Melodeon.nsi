@@ -2,9 +2,9 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "Melodeon"
-!define PRODUCT_VERSION "1.0"
+!define PRODUCT_VERSION "1.05"
 !define PRODUCT_PUBLISHER "Bill Farmer"
-!define PRODUCT_WEB_SITE "http://code.google.com/p/melodeon"
+!define PRODUCT_WEB_SITE "http://melodeon.googlecode.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\Melodeon.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
@@ -58,7 +58,6 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
   File "Melodeon.exe"
-  File "Melodeon.exe.manifest"
   File "Readme.txt"
   File "Changes"
   File "COPYING"
@@ -107,7 +106,6 @@ Section Uninstall
   Delete "$INSTDIR\Readme.txt"
   Delete "$INSTDIR\Changes"
   Delete "$INSTDIR\COPYING"
-  Delete "$INSTDIR\Melodeon.exe.manifest"
   Delete "$INSTDIR\Melodeon.exe"
 
   Delete "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk"

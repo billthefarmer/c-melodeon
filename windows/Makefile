@@ -5,6 +5,7 @@
 ################################################################################
 
 GCC	= gcc
+WINDRES = windres
 
 all:	Melodeon.exe
 
@@ -14,7 +15,7 @@ clean:
 	rm *.exe
 
 %.exe:	%.c
-	$(GCC) $< -o $* -mwindows -lcomctl32 -lwinmm
+	$(GCC) -o $* $< $*.o -mwindows -lcomctl32 -lwinmm
 
 %.o:	%.rc
 	$(WINDRES) -o $@ $<
