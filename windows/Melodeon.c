@@ -122,6 +122,8 @@ char *instruments[] =
      "Seashore", "Bird Tweet", "Telephone Ring",
      "Helicopter", "Applause", "Gunshot"};
 
+int instrument;
+
 // List of keys and offset values
 
 char *keys[] =
@@ -343,12 +345,6 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
     static HWND quit;
     static HWND text;
     static HWND stat;
-
-    // Selection values
-
-    static int ival;
-    static int kval;
-    static int lval;
 
     // Window dimensions
 
@@ -845,26 +841,21 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	case INST:
 	    switch (HIWORD(wParam))
 	    {
-	    case CBN_DROPDOWN:
-		ival = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
-		break;
-
 	    case CBN_SELENDOK:
 		ChangeInstrument((HWND)lParam);
-
-		// Set the focus back to the window
-
-		SetFocus(hWnd);
 		break;
 
 	    case CBN_SELENDCANCEL:
-		SendMessage((HWND)lParam, CB_SETCURSEL, ival, 0);
-
-		// Set the focus back to the window
-
-		SetFocus(hWnd);
+		SendMessage((HWND)lParam, CB_SETCURSEL, instrument, 0);
 		break;
+
+	    default:
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	    }
+
+	    // Set the focus back to the window
+
+	    SetFocus(hWnd);
 	    break;
 
 	    // Reverse control
@@ -883,26 +874,21 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	case KEYS:
 	    switch (HIWORD(wParam))
 	    {
-	    case CBN_DROPDOWN:
-		kval = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
-		break;
-
 	    case CBN_SELENDOK:
 		ChangeKey((HWND)lParam);
-
-		// Set the focus back to the window
-
-		SetFocus(hWnd);
 		break;
 
 	    case CBN_SELENDCANCEL:
-		SendMessage((HWND)lParam, CB_SETCURSEL, kval, 0);
-
-		// Set the focus back to the window
-
-		SetFocus(hWnd);
+		SendMessage((HWND)lParam, CB_SETCURSEL, key, 0);
 		break;
+
+	    default:
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	    }
+
+	    // Set the focus back to the window
+
+	    SetFocus(hWnd);
 	    break;
 
 	    // Layout control
@@ -910,26 +896,21 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	case LAYT:
 	    switch (HIWORD(wParam))
 	    {
-	    case CBN_DROPDOWN:
-		lval = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
-		break;
-
 	    case CBN_SELENDOK:
 		ChangeLayout((HWND)lParam);
-
-		// Set the focus back to the window
-
-		SetFocus(hWnd);
 		break;
 
 	    case CBN_SELENDCANCEL:
-		SendMessage((HWND)lParam, CB_SETCURSEL, lval, 0);
-
-		// Set the focus back to the window
-
-		SetFocus(hWnd);
+		SendMessage((HWND)lParam, CB_SETCURSEL, layout, 0);
 		break;
+
+	    default:
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	    }
+
+	    // Set the focus back to the window
+
+	    SetFocus(hWnd);
 	    break;
 
 	    // Keyboard buttons, set the focus back to the window
@@ -983,11 +964,11 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 
 UINT ChangeInstrument(HWND hinst)
 {
-    int inst = SendMessage(hinst, CB_GETCURSEL, 0, 0);
-    ShortMessage(CHANGE, inst, 0);
+    instrument = SendMessage(hinst, CB_GETCURSEL, 0, 0);
+    ShortMessage(CHANGE, instrument, 0);
 #ifdef BASSBUTTONS
-    ShortMessage(CHANGE + 1, inst, 0);
-    ShortMessage(CHANGE + 2, inst, 0);
+    ShortMessage(CHANGE + 1, instrument, 0);
+    ShortMessage(CHANGE + 2, instrument, 0);
 #endif
 }
 
