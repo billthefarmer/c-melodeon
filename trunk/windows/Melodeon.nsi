@@ -64,6 +64,7 @@ Section "MainSection" SEC01
 
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+  SetShellVarContext all
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Melodeon.lnk" "$INSTDIR\Melodeon.exe"
   !insertmacro MUI_STARTMENU_WRITE_END
@@ -71,8 +72,10 @@ SectionEnd
 
 Section -AdditionalIcons
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+  SetShellVarContext all
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
+  SetShellVarContext all
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Melodeon on Google Code.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk" "$INSTDIR\uninst.exe"
   !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
@@ -108,8 +111,9 @@ Section Uninstall
   Delete "$INSTDIR\COPYING"
   Delete "$INSTDIR\Melodeon.exe"
 
+  SetShellVarContext all
   Delete "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk"
-  Delete "$SMPROGRAMS\$ICONS_GROUP\Website.lnk"
+  Delete "$SMPROGRAMS\$ICONS_GROUP\Melodeon on Google Code.lnk"
   Delete "$SMPROGRAMS\$ICONS_GROUP\Melodeon.lnk"
 
   RMDir "$SMPROGRAMS\$ICONS_GROUP"
