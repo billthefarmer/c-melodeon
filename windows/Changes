@@ -1,3 +1,5 @@
+Fix uninstaller not removing shortcuts in Vista and Windows 7. 07-Dec-09
+
 Fix problems with drop down combo boxes in Vista and Windows 7. 01-Dec-09 
 
 Correct Makefile and Melodeon.nsi. 24-Nov-09
