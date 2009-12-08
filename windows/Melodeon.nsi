@@ -72,7 +72,6 @@ SectionEnd
 
 Section -AdditionalIcons
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-  SetShellVarContext all
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   SetShellVarContext all
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Melodeon on Google Code.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
