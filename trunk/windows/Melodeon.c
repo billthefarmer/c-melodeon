@@ -146,7 +146,7 @@ UINT layout;
 // Midi notes for 'C'
 
 BYTE notes[LENGTH(layouts)][BUTTONS][2] =
-    {{{48, 53},
+    {{{48, 53}, // Extended
       {52, 57},
       {55, 59},
       {60, 62},
@@ -158,7 +158,7 @@ BYTE notes[LENGTH(layouts)][BUTTONS][2] =
       {84, 81},
       {88, 83},
       {91, 86}},
-     {{48, 53},
+     {{48, 53}, // Hohner
       {52, 55},
       {55, 59},
       {60, 62},
@@ -174,22 +174,22 @@ BYTE notes[LENGTH(layouts)][BUTTONS][2] =
 // Midi notes for bass
 #ifdef BASSBUTTONS
 BYTE bass[LENGTH(keys)][2] =
-    {{39, 46},
-     {46, 41},
-     {41, 36},
-     {36, 43},
-     {43, 38},
-     {38, 45},
-     {45, 40}};
+    {{39, 46},  // Eb/Bb
+     {46, 41},  // Bb/F
+     {41, 36},  // F/C
+     {36, 43},  // C/G
+     {43, 38},  // G/D
+     {38, 45},  // D/A
+     {45, 40}}; // A/E
 
 byte chord[LENGTH(keys)][2][2] =
-    {{{63, 70}, {70, 65}},
-     {{70, 65}, {65, 60}},
-     {{65, 60}, {60, 67}},
-     {{60, 67}, {67, 62}},
-     {{67, 62}, {62, 69}},
-     {{62, 69}, {69, 64}},
-     {{69, 64}, {64, 71}}};
+    {{{63, 70}, {70, 65}},  // Eb/Bb
+     {{70, 65}, {65, 60}},  // Bb/F
+     {{65, 60}, {60, 67}},  // F/C
+     {{60, 67}, {67, 62}},  // C/G
+     {{67, 62}, {62, 69}},  // G/D
+     {{62, 69}, {69, 64}},  // D/A
+     {{69, 64}, {64, 71}}}; // A/E
 #endif
 // Buttons
 
@@ -268,7 +268,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	    LoadCursor(NULL,
 		       IDC_ARROW);        // predefined arrow
 	wc.hbrBackground =
-	    GetSysColorBrush(COLOR_3DFACE);
+	    GetSysColorBrush(COLOR_WINDOW);
 // 	    GetStockObject(WHITE_BRUSH);  // white background brush
 	wc.lpszMenuName =  "MainMenu";    // name of menu resource
 	wc.lpszClassName = "MainWClass";  // name of window class
@@ -733,10 +733,11 @@ LRESULT CALLBACK MainWndProc(HWND hWnd,
 	break;
 
 	// Colour static text, defeat DefWindowProc() by capturing
-	// this message. Changed background colour instead.
+	// this message. Changed background colour.
 
-//     case WM_CTLCOLORSTATIC:
-// 	break;
+    case WM_CTLCOLORSTATIC:
+	return (int) GetSysColorBrush(COLOR_WINDOW);
+	break;
 
 	// Disable menus by capturing this message
 
