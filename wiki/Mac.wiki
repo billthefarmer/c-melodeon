@@ -7,6 +7,9 @@ A Mac version has been released.
 
 http://melodeon.googlecode.com/files/Snapshot-Melodeon.png
 
+== Playing ==
+Hold the keyboard facing away from you with the Esc button at the bottom and the Pause button under your chin. Play the function keys, waggling the space bar as it were the bellows. If you are really good you can play bass simultaneously on the Control and Alt keys. The key may be changed by pressing the letter key for the desired playing key. The buttons may be reversed by pressing the 'R' key. If you don't know how to play button accordion / melodeon, see http://info.melodeon.net. Also see http://www.youtube.com/watch?v=JXFDcEOhIX8 for a truly amazing performance by an anonymous user.
+
 == Issues ==
 
 There are several things to be done to get this emulator working on any given platform:
