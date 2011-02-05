@@ -28,3 +28,6 @@ There are several things to be done to get this emulator working on any given pl
  * I have discovered that it is possible to run versions of Mac OSX on a PC, so I am currently investigation development on a Hackintosh using Carbon.
  * I now have the mac version mainly working, debugging to go. I love the concert hall reverberation you get with the built in midi synthesizer without asking.
  * Mac version released. You need to disable several keyboard short cuts for the function keys to work.
+
+== Donate ==
+[https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=TZNQZU88LDRAY&lc=GB&item_name=Accordion&item_number=mac&currency_code=GBP&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted https://www.paypal.com/en_GB/i/btn/btn_donate_LG.gif]
