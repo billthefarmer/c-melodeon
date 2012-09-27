@@ -7,6 +7,8 @@ Comments on the Windows version.
 
 Version 1.06 fixes a bug in the combo drop-down boxes that were not working correctly in Vista and Windowd 7.
 
+Photo Editor had been superseded by a very nice free editor [http://www.getpaint.net paint.net].
+
 http://melodeon.googlecode.com/files/Photo_editor.png
 
 == Comments ==
