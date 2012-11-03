@@ -31,5 +31,3 @@ There are several things to be done to get this emulator working on any given pl
 
 == Donate ==
 [https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=TZNQZU88LDRAY&lc=GB&item_name=Accordion&item_number=mac&currency_code=GBP&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted https://www.paypal.com/en_GB/i/btn/btn_donate_LG.gif]
-
-http://billthefarmer.users.sourceforge.net/piwik/piwik.php?idsite=6&rec=1&action_name=Wiki/Mac&dummy=dummy.png
