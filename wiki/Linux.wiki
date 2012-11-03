@@ -30,5 +30,3 @@ There are several things to be done to get this emulator working on any given pl
  * In order to stop notes repeating, I have had to disable auto repeat on the keyboard. This is global for the session, so it needs to be restored afterwards. Gtk and xlib offer no means to test for repeated keys that I can find.
 
  * I have released Melodeon 1.05 for linux. The tarball is rather large because it includes the sound font file.
-
-http://billthefarmer.users.sourceforge.net/piwik/piwik.php?idsite=6&rec=1&action_name=Wiki/Linux&dummy=dummy.png
