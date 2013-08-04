@@ -3,7 +3,7 @@
 
 = Introduction =
 
-An android melodeon emulator. Emulates a one row melodeon and a one and a half row organetto. The organetto half row buttons are reversals. There is a choice of midi intruments and keys. It may also be found on [https://github.com/billthefarmer/melodeon Github].
+An android melodeon emulator. Emulates a one row melodeon and a one and a half row organetto. The organetto half row buttons are reversals. There is a choice of midi intruments and keys. It may also be found on [https://github.com/billthefarmer/melodeon Github]. The app is now on [https://f-droid.org/repository/browse/?fdid=org.billthefarmer.melodeon F-Droid].
 
 http://melodeon.googlecode.com/svn/wiki/images/Melodeon.png
 http://melodeon.googlecode.com/svn/wiki/images/Melodeon-organetto.png
