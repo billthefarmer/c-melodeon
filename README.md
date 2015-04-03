@@ -11,7 +11,7 @@ can cause strange things to happen, see
 README. Version 1.06 fixes a bug in the combo drop-down boxes in
 Vista and Windows 7.
 
-![http://melodeon.googlecode.com/files/Melodeon.png](http://melodeon.googlecode.com/files/Melodeon.png)
+![http://melodeon.googlecode.com/files/Melodeon.png](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/melodeon/Melodeon.png)
 
 ## Playing ##
 Hold the keyboard facing away from you with the Esc button at the
